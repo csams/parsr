@@ -1,7 +1,7 @@
 import string
 from parseit import (Many,  # noqa 401
                      Many1,
-                     Maybe,
+                     Opt,
                      Char,
                      EscapedChar,
                      InSet,
@@ -60,4 +60,4 @@ SingleQuoteString = Many1(Letter | Digit | Whitespace | NonSingleQuotePunctuatio
 QuotedString = (DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote)).map(make_string)
 
 _Float = Lift(make_float)
-Number = _Float * Maybe(Char("-")) * Many1(Digit).map(make_string) * (Maybe(Char(".") & Many(Digit).map(make_string)))
+Number = _Float * Opt(Char("-")) * Many1(Digit).map(make_string) * (Opt(Char(".") & Many(Digit).map(make_string)))

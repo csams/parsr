@@ -11,29 +11,25 @@ from parseit.grammar import (AllWhitespace,
                              LeftBracket,
                              LeftCurly,
                              Many,
-                             Maybe,
                              Number,
                              RightBracket,
                              RightCurly,
                              QuotedString)
 
 
-def to_object(res):
-    return {k: v for k, v in res}
+WS = Many(AllWhitespace)
+JsonArray = Forward()
+JsonObject = Forward()
 
-
-WS = Maybe(Many(AllWhitespace))
 TRUE = Keyword("true", True)
 FALSE = Keyword("false", False)
 NULL = Keyword("null", None)
-JsonArray = Forward()
-JsonObject = Forward()
 SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL)
 JsonValue = (WS >> SimpleValue << WS) % "Json Value"
 Key = (QuotedString << Colon)
-KeyValuePair = (WS >> Key) & JsonValue
-JsonObject <= LeftCurly >> KeyValuePair.sep_by(WS >> Comma << WS).map(to_object) << RightCurly
-JsonArray <= LeftBracket >> JsonValue.sep_by(WS >> Comma << WS) << RightBracket
+KVPairs = ((WS >> Key) & JsonValue).sep_by(Comma)
+JsonObject <= LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly
+JsonArray <= LeftBracket >> JsonValue.sep_by(Comma) << RightBracket
 
 
 def loads(data):

@@ -70,7 +70,7 @@ class SepBy(Parser):
 
     def __init__(self, sep, parser):
         self.sep = sep
-        self.parser = Lift(self.accumulate) * Maybe(parser) * Many(sep >> parser)
+        self.parser = Lift(self.accumulate) * Opt(parser) * Many(sep >> parser)
 
     def __call__(self, data):
         return self.parser(data)
@@ -214,7 +214,7 @@ class Many1(Many):
         return f"Many1({self.parser})"
 
 
-class Maybe(Parser):
+class Opt(Parser):
     def __init__(self, parser):
         self.parser = parser
 
