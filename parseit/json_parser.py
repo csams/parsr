@@ -1,26 +1,31 @@
-from parseit.grammar import (QuotedString,
-                             Number,
+from parseit.grammar import (AllWhitespace,
                              Colon,
                              Comma,
                              Forward,
                              Keyword,
                              LeftBracket,
                              LeftCurly,
+                             Many,
+                             Maybe,
+                             Number,
                              RightBracket,
-                             RightCurly)
+                             RightCurly,
+                             QuotedString)
 
 
 def to_object(res):
     return {k: v for k, v in res}
 
 
+WS = Maybe(Many(AllWhitespace))
 TRUE = Keyword("true", True)
 FALSE = Keyword("false", False)
 NULL = Keyword("null", None)
 JsonArray = Forward()
 JsonObject = Forward()
-JsonValue = QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL % "Json Value"
-
-KeyValuePair = (QuotedString << Colon) & JsonValue
-JsonObject <= LeftCurly >> KeyValuePair.sep_by(Comma).map(to_object) << RightCurly
-JsonArray <= LeftBracket >> JsonValue.sep_by(Comma) << RightBracket
+SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL)
+JsonValue = (WS >> SimpleValue << WS) % "Json Value"
+Key = (QuotedString << Colon)
+KeyValuePair = (WS >> Key) & JsonValue
+JsonObject <= LeftCurly >> KeyValuePair.sep_by(WS >> Comma << WS).map(to_object) << RightCurly
+JsonArray <= LeftBracket >> JsonValue.sep_by(WS >> Comma << WS) << RightBracket

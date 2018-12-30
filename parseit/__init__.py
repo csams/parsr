@@ -81,6 +81,7 @@ class SepBy(Parser):
         return results
 
     def __init__(self, sep, parser):
+        self.sep = sep
         self.parser = Lift(self.accumulate) * Maybe(parser) * Many(sep >> parser)
 
     def __call__(self, data):
@@ -89,6 +90,7 @@ class SepBy(Parser):
 
 class Literal(Parser):
     def __init__(self, chars, ignore_case=False):
+        self.chars = chars
         self.parser = reduce(operator.__and__, [Char(c, ignore_case=ignore_case) for c in chars])
 
     def get_literal(self, data):
@@ -131,10 +133,13 @@ class NamedDelegate(Parser):
         self.name = name
 
     def __call__(self, data):
+        pos = data.pos
         try:
             return self.parser(data)
         except Exception:
-            raise Exception(f"Error parsing {self.name} at {data.pos}")
+            pass
+        ctx = data[pos:pos + data.pos]
+        raise Exception(f"Error parsing {self.name} at position {pos}. Context: {ctx}")
 
 
 class Binary(Parser):
@@ -181,8 +186,10 @@ class Lift(Parser):
         return Lift(self.func, args)
 
     def __call__(self, data):
+        pos = data.pos
         results = [p(data).value for p in self.bound_args]
-        return Result(data.pos, self.func(*results))
+        res = self.func(*results)
+        return Result(pos, res)
 
 
 class Or(Binary):
@@ -190,7 +197,8 @@ class Or(Binary):
         try:
             return self.left(data)
         except Exception:
-            return self.right(data)
+            pass
+        return self.right(data)
 
 
 class AnyOf(Parser):
