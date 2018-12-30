@@ -1,3 +1,7 @@
+"""
+This module handles primitive json parsing. It only vaguely conforms to the
+spec.
+"""
 from parseit.grammar import (AllWhitespace,
                              Colon,
                              Comma,

@@ -10,10 +10,6 @@ class Input(list):
         super(Input, self).__init__(*args)
         self.pos = 0
 
-    def clear(self):
-        super(Input, self).clear()
-        self.pos = 0
-
     def peek(self):
         return self[self.pos]
 
@@ -22,19 +18,6 @@ class Input(list):
         self.pos += 1
         c = self[p]
         return (p, c)
-
-    def __getitem__(self, key):
-        try:
-            result = super(Input, self).__getitem__(key)
-            if isinstance(key, slice):
-                return Input(result)
-            return result
-        except Exception as ex:
-            raise ex
-
-    def prev(self):
-        self.pos -= 1
-        return (self.pos, self[self.pos])
 
 
 class Result(object):
@@ -192,24 +175,24 @@ class Lift(Parser):
         return Result(pos, res)
 
 
-class Or(Binary):
-    def __call__(self, data):
-        try:
-            return self.left(data)
-        except Exception:
-            pass
-        return self.right(data)
+class Or(Parser):
+    def __init__(self, left, right):
+        self.predicates = [left, right]
 
-
-class AnyOf(Parser):
-    def __init__(self, parsers):
-        self.combined = reduce(Or, parsers)
+    def __or__(self, other):
+        self.predicates.append(other)
+        return self
 
     def __call__(self, data):
-        return self.combined(data)
+        for p in self.predicates:
+            try:
+                return p(data)
+            except Exception:
+                pass
+        raise Exception()
 
     def __repr__(self):
-        return f"AnyOf({self.parsers})"
+        return f"Or({self.predicates})"
 
 
 class Many(Parser):
