@@ -21,6 +21,7 @@ class Input(list):
 
 
 class Result(object):
+    # A class is actually more performant than a namedtuple.
     def __init__(self, pos, value):
         self.pos = pos
         self.value = value
@@ -30,6 +31,9 @@ class Result(object):
 
 
 class Parser(object):
+    def __init__(self, name):
+        self.name = name
+
     def __or__(self, other):
         return Or(self, other)
 
@@ -43,7 +47,8 @@ class Parser(object):
         return Accumulator(parsers=[self, other])
 
     def __mod__(self, name):
-        return NamedDelegate(self, name)
+        self.name = name
+        return self
 
     def between(self, other):
         return Between(self, other)
@@ -108,21 +113,6 @@ class Accumulator(Parser):
         pos = data.pos
         results = [p(data).value for p in self.parsers]
         return Result(pos, results)
-
-
-class NamedDelegate(Parser):
-    def __init__(self, parser, name):
-        self.parser = parser
-        self.name = name
-
-    def __call__(self, data):
-        pos = data.pos
-        try:
-            return self.parser(data)
-        except Exception:
-            pass
-        ctx = data[pos:pos + data.pos]
-        raise Exception(f"Error parsing {self.name} at position {pos}. Context: {ctx}")
 
 
 class Binary(Parser):

@@ -33,20 +33,27 @@ NonDoubleQuotePunctuation = InSet(_punc_set - set("\"\\"), "non double quote pun
 Punctuation = InSet(_punc_set, "punctuation character")
 Printable = InSet(string.printable, "printable character")
 Whitespace = InSet(set(string.whitespace) - set("\n\r"), "whitespace except newlines")
-EOL = InSet("\n\r", "newline")
+EOL = Many1(InSet("\n\r", "newline"))
 AllWhitespace = (Whitespace | EOL)
+
 LeftCurly = Char("{")
 RightCurly = Char("}")
 LeftBracket = Char("[")
 RightBracket = Char("]")
+LeftParen = Char("(")
+RightParen = Char(")")
+
 Colon = Char(":")
 Comma = Char(",")
 
 DoubleQuote = Char("\"")
 EscapedDoubleQuote = EscapedChar("\"")
+
 SingleQuote = Char("'")
 EscapedSingleQuote = EscapedChar("'")
+
 Backslash = Char("\\")
+
 String = Many1(Letter | Digit | Punctuation | Whitespace).map(make_string)
 DoubleQuoteString = Many1(Letter | Digit | Whitespace | NonDoubleQuotePunctuation | EscapedDoubleQuote | Backslash)
 SingleQuoteString = Many1(Letter | Digit | Whitespace | NonSingleQuotePunctuation | EscapedSingleQuote | Backslash)

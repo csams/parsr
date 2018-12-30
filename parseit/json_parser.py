@@ -2,6 +2,7 @@
 This module handles primitive json parsing. It only vaguely conforms to the
 spec.
 """
+from parseit import Input
 from parseit.grammar import (AllWhitespace,
                              Colon,
                              Comma,
@@ -33,3 +34,11 @@ Key = (QuotedString << Colon)
 KeyValuePair = (WS >> Key) & JsonValue
 JsonObject <= LeftCurly >> KeyValuePair.sep_by(WS >> Comma << WS).map(to_object) << RightCurly
 JsonArray <= LeftBracket >> JsonValue.sep_by(WS >> Comma << WS) << RightBracket
+
+
+def loads(data):
+    return JsonValue(Input(data)).value
+
+
+def load(f):
+    return loads(f.read())
