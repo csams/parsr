@@ -33,7 +33,7 @@ NonDoubleQuotePunctuation = InSet(_punc_set - set("\"\\"), "non double quote pun
 Punctuation = InSet(_punc_set, "punctuation character")
 Printable = InSet(string.printable, "printable character")
 Whitespace = InSet(set(string.whitespace) - set("\n\r"), "whitespace except newlines")
-EOL = Many1(InSet("\n\r", "newline"))
+EOL = InSet("\n\r", "newline")
 AllWhitespace = (Whitespace | EOL)
 
 LeftCurly = Char("{")

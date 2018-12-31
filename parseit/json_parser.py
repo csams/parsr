@@ -18,7 +18,7 @@ from parseit.grammar import (AllWhitespace,
                              QuotedString)
 
 
-WS = Many(AllWhitespace)
+WS = optimize(Many(AllWhitespace) % "WS")
 JsonArray = Forward()
 JsonObject = Forward()
 
