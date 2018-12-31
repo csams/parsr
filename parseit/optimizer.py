@@ -1,3 +1,4 @@
+import copy
 import operator
 from functools import reduce
 from itertools import groupby
@@ -40,6 +41,7 @@ def opt_inset(choice):
 
 def optimize(tree):
     seen = set()
+    tree = copy.deepcopy(tree)
 
     def inner(t):
         if t in seen:
@@ -54,6 +56,7 @@ def optimize(tree):
         if isinstance(t, (Or, Choice)):
             t = opt_or(t)
 
-        t = opt_inset(t)
+        if isinstance(t, Choice):
+            t = opt_inset(t)
         return t
     return inner(tree)
