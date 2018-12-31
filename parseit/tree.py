@@ -17,6 +17,10 @@ class Node:
             parent.children.append(self)
         return self
 
+    def replace_with(self, other):
+        if self.parent:
+            self.parent.replace_child(self, other)
+
     def set_children(self, children):
         for c in self.children:
             c.parent = None

@@ -18,10 +18,9 @@ from parseit.grammar import (AllWhitespace,
                              QuotedString)
 
 
-WS = optimize(Many(AllWhitespace) % "WS")
+WS = Many(AllWhitespace)
 JsonArray = Forward()
 JsonObject = Forward()
-
 TRUE = Keyword("true", True) % "TRUE"
 FALSE = Keyword("false", False) % "FALSE"
 NULL = Keyword("null", None) % "NULL"
@@ -31,8 +30,6 @@ Key = (QuotedString << Colon) % "Key"
 KVPairs = (((WS >> Key) & JsonValue).sep_by(Comma)) % "KVPairs"
 JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
 JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Array"
-
-
 JsonValue = optimize(JsonValue)
 
 
