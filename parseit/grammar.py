@@ -47,16 +47,16 @@ Colon = Char(":")
 Comma = Char(",")
 
 DoubleQuote = Char("\"")
-EscapedDoubleQuote = EscapedChar("\"")
+EscapedDoubleQuote = EscapedChar('"')
 
 SingleQuote = Char("'")
 EscapedSingleQuote = EscapedChar("'")
 
 Backslash = Char("\\")
 
-String = Many1(Letter | Digit | Punctuation | Whitespace).map(make_string)
-DoubleQuoteString = Many1(Letter | Digit | Whitespace | NonDoubleQuotePunctuation | EscapedDoubleQuote | Backslash)
-SingleQuoteString = Many1(Letter | Digit | Whitespace | NonSingleQuotePunctuation | EscapedSingleQuote | Backslash)
+String = Many(Letter | Digit | Punctuation | Whitespace).map(make_string)
+DoubleQuoteString = Many(Letter | Digit | Whitespace | NonDoubleQuotePunctuation | EscapedDoubleQuote | Backslash)
+SingleQuoteString = Many(Letter | Digit | Whitespace | NonSingleQuotePunctuation | EscapedSingleQuote | Backslash)
 QuotedString = (DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote)).map(make_string)
 
 _Float = Lift(make_float)

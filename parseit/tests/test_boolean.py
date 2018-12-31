@@ -2,8 +2,8 @@ from parseit import Char, Input
 
 
 def test_and():
-    p = Char("a") & Char("b") & Char("c")
-    assert p(Input("abc")).value == ["a", "b", "c"]
+    p = Char("a") & Char("b")
+    assert p(Input("ab")).value == ["a", "b"]
 
 
 def test_or():

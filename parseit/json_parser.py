@@ -3,6 +3,7 @@ This module handles primitive json parsing. It only vaguely conforms to the
 spec.
 """
 from parseit import Input
+from parseit.optimizer import optimize
 from parseit.grammar import (AllWhitespace,
                              Colon,
                              Comma,
@@ -21,15 +22,18 @@ WS = Many(AllWhitespace)
 JsonArray = Forward()
 JsonObject = Forward()
 
-TRUE = Keyword("true", True)
-FALSE = Keyword("false", False)
-NULL = Keyword("null", None)
-SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL)
+TRUE = Keyword("true", True) % "TRUE"
+FALSE = Keyword("false", False) % "FALSE"
+NULL = Keyword("null", None) % "NULL"
+SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL) % "SimpleValue"
 JsonValue = (WS >> SimpleValue << WS) % "Json Value"
-Key = (QuotedString << Colon)
-KVPairs = ((WS >> Key) & JsonValue).sep_by(Comma)
-JsonObject <= LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly
-JsonArray <= LeftBracket >> JsonValue.sep_by(Comma) << RightBracket
+Key = (QuotedString << Colon) % "Key"
+KVPairs = (((WS >> Key) & JsonValue).sep_by(Comma)) % "KVPairs"
+JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
+JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Array"
+
+
+JsonValue = optimize(JsonValue)
 
 
 def loads(data):

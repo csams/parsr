@@ -1,6 +1,5 @@
 import logging
-import operator
-from functools import reduce
+from parseit.tree import Node
 
 log = logging.getLogger(__name__)
 
@@ -30,25 +29,29 @@ class Result(object):
         return f"Result(pos={self.pos}, value={self.value})"
 
 
-class Parser(object):
-    def __init__(self, name):
-        self.name = name
+class Parser(Node):
+    def __init__(self):
+        super(Parser, self).__init__()
+        self.name = None
 
     def __or__(self, other):
         return Or(self, other)
 
-    def __rshift__(self, other):
-        return KeepRight(self, other)
-
     def __lshift__(self, other):
         return KeepLeft(self, other)
 
+    def __rshift__(self, other):
+        return KeepRight(self, other)
+
     def __and__(self, other):
-        return Accumulator(parsers=[self, other])
+        return And(self, other)
 
     def __mod__(self, name):
         self.name = name
         return self
+
+    def sep_by(self, p):
+        return SepBy(p, self)
 
     def between(self, other):
         return Between(self, other)
@@ -56,11 +59,17 @@ class Parser(object):
     def map(self, func):
         return Map(func, self)
 
-    def sep_by(self, p):
-        return SepBy(p, self)
+    def __repr__(self):
+        return self.name or super(Parser, self).__repr__()
 
 
 class SepBy(Parser):
+    def __init__(self, sep, parser):
+        super(SepBy, self).__init__()
+        parser = Lift(self.accumulate) * Opt(parser) * Many(sep >> parser)
+        parser.set_parent(self)
+        sep.set_parent(self)
+
     @staticmethod
     def accumulate(first, rest):
         results = [first] if first else []
@@ -68,21 +77,21 @@ class SepBy(Parser):
             results.extend(rest)
         return results
 
-    def __init__(self, sep, parser):
-        self.sep = sep
-        self.parser = Lift(self.accumulate) * Opt(parser) * Many(sep >> parser)
-
     def __call__(self, data):
-        return self.parser(data)
+        parser = self.children[0]
+        return parser(data)
 
 
 class Literal(Parser):
     def __init__(self, chars, ignore_case=False):
+        super(Literal, self).__init__()
         self.chars = chars
-        self.parser = reduce(operator.__and__, [Char(c, ignore_case=ignore_case) for c in chars])
+        parser = Accumulator([Char(c, ignore_case=ignore_case) for c in chars])
+        parser.set_parent(self)
 
     def get_literal(self, data):
-        return "".join(self.parser(data).value)
+        parser = self.children[0]
+        return "".join(parser(data).value)
 
     def __call__(self, data):
         pos = data.pos
@@ -103,125 +112,139 @@ class Keyword(Literal):
 
 class Accumulator(Parser):
     def __init__(self, parsers=None):
-        self.parsers = parsers or []
-
-    def __and__(self, other):
-        self.parsers.append(other)
-        return self
+        super(Accumulator, self).__init__()
+        for p in parsers:
+            p.set_parent(self)
 
     def __call__(self, data):
         pos = data.pos
-        results = [p(data).value for p in self.parsers]
+        results = [p(data).value for p in self.children]
         return Result(pos, results)
 
 
 class Binary(Parser):
     def __init__(self, left, right):
-        self.left = left
-        self.right = right
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.left}, {self.right})"
+        super(Binary, self).__init__()
+        left.set_parent(self)
+        right.set_parent(self)
 
 
-class KeepRight(Binary):
+class And(Binary):
     def __call__(self, data):
-        self.left(data)
-        return self.right(data)
+        left, right = self.children
+        val = [left(data).value, right(data).value]
+        return Result(data.pos, val)
+
+
+class Or(Binary):
+    def __call__(self, data):
+        left, right = self.children
+        try:
+            return left(data)
+        except Exception:
+            pass
+        return right(data)
 
 
 class KeepLeft(Binary):
     def __call__(self, data):
-        res = self.left(data)
-        self.right(data)
+        left, right = self.children
+        res = left(data)
+        right(data)
         return res
+
+
+class KeepRight(Binary):
+    def __call__(self, data):
+        left, right = self.children
+        left(data)
+        return right(data)
 
 
 class Forward(Parser):
     def __init__(self):
-        self.delegate = None
+        super(Forward, self).__init__()
 
     def __le__(self, other):
-        self.delegate = other
+        self.set_children([other])
 
     def __call__(self, data):
-        return self.delegate(data)
+        return self.children[0](data)
 
 
 class Lift(Parser):
     def __init__(self, func, args=None):
+        super(Lift, self).__init__()
         self.func = func
-        self.bound_args = args or []
+        args = args or []
+        for a in args:
+            a.set_parent(self)
 
     def __mul__(self, other):
-        args = list(self.bound_args)
-        args.append(other)
-        return Lift(self.func, args)
-
-    def __call__(self, data):
-        pos = data.pos
-        results = [p(data).value for p in self.bound_args]
-        res = self.func(*results)
-        return Result(pos, res)
-
-
-class Or(Parser):
-    def __init__(self, left, right):
-        self.predicates = [left, right]
-
-    def __or__(self, other):
-        self.predicates.append(other)
+        other.set_parent(self)
         return self
 
     def __call__(self, data):
-        for p in self.predicates:
+        pos = data.pos
+        results = [p(data).value for p in self.children]
+        res = self.func(*results)
+        return Result(pos, res)
+
+    def __repr__(self):
+        return f"Lift({self.func.__name__})"
+
+
+class Choice(Parser):
+    def add_predicates(self, preds):
+        for p in preds:
+            p.set_parent(self)
+        return self
+
+    def __call__(self, data):
+        for p in self.children:
             try:
                 return p(data)
             except Exception:
                 pass
         raise Exception()
 
-    def __repr__(self):
-        return f"Or({self.predicates})"
-
 
 class Many(Parser):
     def __init__(self, parser):
-        self.parser = parser
+        super(Many, self).__init__()
+        parser.set_parent(self)
 
     def __call__(self, data):
         results = []
         pos = data.pos
+        parser = self.children[0]
         try:
             while True:
-                results.append(self.parser(data).value)
+                results.append(parser(data).value)
         except Exception:
             pass
         return Result(pos, results)
 
-    def __repr__(self):
-        return f"Many({self.parser})"
-
 
 class Many1(Many):
     def __call__(self, data):
+        parser = self.children[0]
         pos = data.pos
-        results = [self.parser(data).value]
+        results = [parser(data).value]
         results.extend(super(Many1, self).__call__(data).value)
         return Result(pos, results)
-
-    def __repr__(self):
-        return f"Many1({self.parser})"
 
 
 class Opt(Parser):
     def __init__(self, parser):
-        self.parser = parser
+        super(Opt, self).__init__()
+        parser.set_parent(self)
 
     def __call__(self, data):
         pos = data.pos
+        parser = self.children[0]
         try:
-            return self.parser(data)
+            return parser(data)
         except Exception:
             data.pos = pos
         return Result(pos, None)
@@ -229,36 +252,38 @@ class Opt(Parser):
 
 class Between(Parser):
     def __init__(self, parser, envelope):
-        self.parser = parser
-        self.envelope = envelope
+        super(Between, self).__init__()
+        parser.set_parent(self)
+        envelope.set_parent(self)
 
     def __call__(self, data):
-        self.envelope(data)
-        r = self.parser(data)
-        self.envelope(data)
+        parser, envelope = self.children
+        envelope(data)
+        r = parser(data)
+        envelope(data)
         return r
-
-    def __repr__(self):
-        return f"Between({self.parser}, {self.envelope})"
 
 
 class Map(Parser):
     """ lifts (a -> b) to (Parser<a> -> Parser<b>) """
     def __init__(self, func, parser):
+        super(Map, self).__init__()
         self.func = func
-        self.parser = parser
+        parser.set_parent(self)
 
     def __call__(self, data):
+        parser = self.children[0]
         pos = data.pos
-        result = self.parser(data)
+        result = parser(data)
         return Result(pos, self.func(result.value))
 
     def __repr__(self):
-        return f"Map({self.func}, {self.parser})"
+        return f"Map({self.func.__name__})"
 
 
 class Char(Parser):
     def __init__(self, c, ignore_case=False):
+        super(Char, self).__init__()
         self.ignore_case = ignore_case
         self.c = c if not ignore_case else c.lower()
 
@@ -289,6 +314,7 @@ class EscapedChar(Char):
 
 class InSet(Parser):
     def __init__(self, values, label):
+        super(InSet, self).__init__()
         self.cache = set(values)
         self.label = label
 
@@ -301,3 +327,21 @@ class InSet(Parser):
 
     def __repr__(self):
         return f"InSet({self.label})"
+
+
+class StringBuilder(Parser):
+    def __init__(self, cache=None):
+        super(StringBuilder, self).__init__()
+        self.cache = cache or set()
+
+    def __call__(self, data):
+        pos = data.pos
+        results = []
+        try:
+            while data.peek() in self.cache:
+                _, c = data.next()
+                results.append(c)
+        except Exception:
+            pass
+        res = "".join(results)
+        return Result(pos, res)
