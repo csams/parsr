@@ -11,17 +11,26 @@ def test_inset():
 
 def test_stringbuilder():
     sb = StringBuilder()
-    sb.cache |= set(string.ascii_letters)
+    sb.add_cache(set(string.ascii_letters))
     data = Input("abcde")
     assert sb(data).value == "abcde"
 
 
 def test_manual_quoted_string():
     sb = StringBuilder()
-    sb.cache |= set(string.ascii_letters)
+    sb.add_cache(set(string.ascii_letters))
     p = Between(sb, Char('"'))
     data = Input('"abcde"')
     assert p(data).value == "abcde"
+
+
+def test_manual_escaped_string():
+    sb = StringBuilder()
+    sb.add_cache(set(string.ascii_letters))
+    sb.add_echar("'")
+    p = Between(sb, Char("'"))
+    data = Input(r"""'a\'bcde'""")
+    assert p(data).value == "a\'bcde"
 
 
 def test_string():

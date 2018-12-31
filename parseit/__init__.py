@@ -8,9 +8,10 @@ class Input(list):
     def __init__(self, *args):
         super(Input, self).__init__(*args)
         self.pos = 0
+        self.length = len(self)
 
     def peek(self):
-        return self[self.pos]
+        return self[self.pos] if self.pos < self.length else None
 
     def next(self):
         p = self.pos
@@ -332,21 +333,38 @@ class InSet(Parser):
 
 
 class StringBuilder(Parser):
-    def __init__(self, cache=None, echars=None):
+    def __init__(self, anyChar=None):
         super(StringBuilder, self).__init__()
-        self.cache = cache or set()
+        self.cache = anyChar.cache if anyChar else set()
+        self.echars = anyChar.echars if anyChar else set()
+
+    def add_cache(self, cache):
+        self.cache |= cache
+
+    def add_echars(self, echars):
+        self.echars |= echars
+
+    def add_echar(self, echar):
+        self.echars.add(echar)
 
     def __call__(self, data):
+        result = []
         pos = data.pos
-        results = []
-        try:
-            while data.peek() in self.cache:
-                _, c = data.next()
-                results.append(c)
-        except Exception:
-            pass
-        res = "".join(results)
-        return Result(pos, res)
+        p = data.peek()
+        while p == "\\" or p in self.cache:
+            if p == "\\":
+                pos, e = data.next()
+                if data.peek() in self.echars:
+                    _, c = data.next()
+                    result.append(c)
+                else:
+                    data.pos -= 1
+
+            if p in self.cache:
+                pos, c = data.next()
+                result.append(c)
+            p = data.peek()
+        return Result(pos, "".join(result))
 
 
 class AnyChar(Parser):
