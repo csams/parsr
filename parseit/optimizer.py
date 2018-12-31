@@ -2,7 +2,7 @@ import copy
 import operator
 from functools import reduce
 from itertools import groupby
-from parseit import Choice, InSet, Or
+from parseit import AnyChar, Char, Choice, EscapedChar, InSet, Or
 
 
 def opt_or(tree):
@@ -39,6 +39,32 @@ def opt_inset(choice):
     return choice
 
 
+def opt_character(choice):
+    if all(isinstance(p, (AnyChar, Char, InSet)) for p in choice.children):
+        ac = AnyChar()
+        for p in choice.children:
+            if isinstance(p, InSet):
+                ac.add_inset(p)
+            elif isinstance(p, EscapedChar):
+                ac.add_echar(p)
+            elif isinstance(p, Char):
+                ac.add_char(p)
+            elif isinstance(p, AnyChar):
+                ac.add_anychar(p)
+
+        ac.name = " | ".join([p.name or str(p) for p in choice.children])
+        if choice.parent:
+            choice.parent.replace_child(choice, ac)
+        return ac
+    return choice
+
+
+def opt_choice(choice):
+    choice = opt_inset(choice)
+    choice = opt_character(choice)
+    return choice
+
+
 def optimize(tree):
     seen = set()
     tree = copy.deepcopy(tree)
@@ -57,6 +83,7 @@ def optimize(tree):
             t = opt_or(t)
 
         if isinstance(t, Choice):
-            t = opt_inset(t)
+            t = opt_choice(t)
+
         return t
     return inner(tree)

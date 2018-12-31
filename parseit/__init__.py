@@ -191,7 +191,7 @@ class Lift(Parser):
         return Result(pos, res)
 
     def __repr__(self):
-        return f"Lift({self.func.__name__})"
+        return self.name or f"Lift({self.func.__name__})"
 
 
 class Choice(Parser):
@@ -201,12 +201,13 @@ class Choice(Parser):
         return self
 
     def __call__(self, data):
+        msgs = []
         for p in self.children:
             try:
                 return p(data)
-            except Exception:
-                pass
-        raise Exception()
+            except Exception as ex:
+                msgs.append(str(ex))
+        raise Exception("; ".join(msgs))
 
 
 class Many(Parser):
@@ -278,7 +279,7 @@ class Map(Parser):
         return Result(pos, self.func(result.value))
 
     def __repr__(self):
-        return f"Map({self.func.__name__})"
+        return self.name or f"Map({self.func.__name__})"
 
 
 class Char(Parser):
@@ -294,7 +295,7 @@ class Char(Parser):
         if c == self.c:
             pos, n = data.next()
             return Result(pos, n)
-        raise Exception(f"Expected {self.c} at offset {data.pos}")
+        raise Exception(f"Expected {self.c} at offset {data.pos} Got {c} instead.")
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.c})"
@@ -307,7 +308,7 @@ class EscapedChar(Char):
             pos, e = data.next()
             if data.peek() == self.c:
                 _, c = data.next()
-                return Result(pos - 1, str(f"{e}{c}"))
+                return Result(pos - 1, c)
             data.pos -= 1
         raise Exception(f"Expected {self.c} at offset {data.pos}. Got {e} instead.")
 
@@ -316,6 +317,7 @@ class InSet(Parser):
     def __init__(self, values, label):
         super(InSet, self).__init__()
         self.cache = set(values)
+        self.name = label
         self.label = label
 
     def __call__(self, data):
@@ -326,11 +328,11 @@ class InSet(Parser):
         raise Exception(f"Expected a {self.label} at offset {data.pos}. Got {c} instead.")
 
     def __repr__(self):
-        return f"InSet({self.label})"
+        return f"InSet({self.name})"
 
 
 class StringBuilder(Parser):
-    def __init__(self, cache=None):
+    def __init__(self, cache=None, echars=None):
         super(StringBuilder, self).__init__()
         self.cache = cache or set()
 
@@ -345,3 +347,42 @@ class StringBuilder(Parser):
             pass
         res = "".join(results)
         return Result(pos, res)
+
+
+class AnyChar(Parser):
+    def __init__(self):
+        super(AnyChar, self).__init__()
+        self.cache = set()
+        self.echars = set()
+
+    def add_anychar(self, ac):
+        self.cache |= ac.cache
+        self.echars |= ac.echars
+        return self
+
+    def add_char(self, char):
+        self.cache.add(char.c)
+        return self
+
+    def add_inset(self, s):
+        self.cache |= s.cache
+
+    def add_echar(self, echar):
+        self.echars.add(echar.c)
+
+    def __call__(self, data):
+        p = data.peek()
+        if p == "\\":
+            pos, e = data.next()
+            if data.peek() in self.echars:
+                _, c = data.next()
+                return Result(pos - 1, c)
+            data.pos -= 1
+
+        if p in self.cache:
+            pos, c = data.next()
+            return Result(pos, c)
+        raise Exception()
+
+    def __repr__(self):
+        return f"AnyChar({self.name})"

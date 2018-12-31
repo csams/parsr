@@ -54,10 +54,10 @@ EscapedSingleQuote = EscapedChar("'")
 
 Backslash = Char("\\")
 
-String = Many(Letter | Digit | Punctuation | Whitespace).map(make_string)
+String = Many(Letter | Digit | Punctuation | Whitespace).map(make_string) % "String"
 DoubleQuoteString = Many(Letter | Digit | Whitespace | NonDoubleQuotePunctuation | EscapedDoubleQuote | Backslash)
 SingleQuoteString = Many(Letter | Digit | Whitespace | NonSingleQuotePunctuation | EscapedSingleQuote | Backslash)
-QuotedString = (DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote)).map(make_string)
+QuotedString = ((DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote)).map(make_string)) % "QuotedString"
 
 _Float = Lift(make_float)
-Number = _Float * Opt(Char("-")) * Many1(Digit).map(make_string) * (Opt(Char(".") & Many(Digit).map(make_string)))
+Number = _Float * Opt(Char("-")) * Many1(Digit).map(make_string) * (Opt(Char(".") & Many(Digit).map(make_string))) % "Number"

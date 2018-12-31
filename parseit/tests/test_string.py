@@ -33,5 +33,11 @@ def test_string():
 def test_quoted_string():
     data = Input("'abcde'")
     OString = optimize(QuotedString)
-    print()
     assert OString(data).value == "abcde"
+
+
+def test_escaped_string():
+    data = Input(r"""'a\'bcde'""")
+#    OString = QuotedString
+    OString = optimize(QuotedString)
+    assert OString(data).value == "a\'bcde"
