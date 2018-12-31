@@ -44,15 +44,15 @@ class _Optimizer:
         ac.name = p.name or str(p)
         return ac
 
-    def opt_or(self, tree):
+    def opt_or(self, node):
         """
-        Combines nested Or trees into a single Choice.
+        Combines nested Or nodes into a single Choice.
 
         All Or instances are converted to Choices.
         """
         choice = Choice()
 
-        for c in tree.children:
+        for c in node.children:
             c = self.optimize(c)
             if isinstance(c, (Or, Choice)):
                 choice.add_predicates(c.children)
@@ -60,7 +60,7 @@ class _Optimizer:
                 choice.add_predicates([c])
 
         choice = self.optimize(choice)
-        tree.replace_with(choice)
+        node.replace_with(choice)
         return choice
 
     def fold_insets(self, choice):
@@ -76,11 +76,11 @@ class _Optimizer:
             if cls is not InSet:
                 children.extend(objs)
             else:
-                sets = [o for o in objs]
+                sets = list(objs)
                 if len(sets) == 1:
                     children.extend(sets)
                 else:
-                    labels = [s.label for s in sets]
+                    labels = [s.name for s in sets]
                     cache = reduce(operator.__or__, [s.cache for s in sets], set())
                     children.append(InSet(cache, " | ".join(labels)))
         choice.set_children(children)
@@ -92,11 +92,7 @@ class _Optimizer:
         """
         choice.set_children([self.optimize(c) for c in choice.children])
         if all(isinstance(p, AnyChar) for p in choice.children):
-            ac = AnyChar()
-            for p in choice.children:
-                ac.add_anychar(p)
-
-            ac.name = " | ".join([p.name or str(p) for p in choice.children])
+            ac = sum(choice.children, AnyChar())
             choice.replace_with(ac)
             return ac
         return choice

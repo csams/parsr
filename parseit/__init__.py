@@ -388,6 +388,13 @@ class AnyChar(Parser):
     def add_echar(self, echar):
         self.echars.add(echar.c)
 
+    def __add__(self, other):
+        res = AnyChar()
+        res.cache = self.cache | other.cache
+        res.echars = self.echars | other.echars
+        res.name = " | ".join([self.name, other.name]) if self.name else other.name
+        return res
+
     def __call__(self, data):
         p = data.peek()
         if p == "\\":
