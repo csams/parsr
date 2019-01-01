@@ -86,13 +86,23 @@ class SepBy(Parser):
 class Literal(Parser):
     def __init__(self, chars, ignore_case=False):
         super(Literal, self).__init__()
-        self.chars = chars
-        parser = Accumulator([Char(c, ignore_case=ignore_case) for c in chars])
-        parser.set_parent(self)
+        self.ignore_case = ignore_case
+        self.chars = chars if not ignore_case else chars.lower()
 
     def get_literal(self, data):
-        parser = self.children[0]
-        return "".join(parser(data).value)
+        res = []
+        pos = data.pos
+        for c in self.chars:
+            _, e = data.next()
+            res.append(e)
+        res = "".join(res)
+        if self.ignore_case:
+            res = res.lower()
+        if self.chars != res:
+            msg = f"Expected {self.chars} but got {res} instead at pos {pos}."
+            raise Exception(msg)
+
+        return self.chars
 
     def __call__(self, data):
         pos = data.pos
@@ -109,18 +119,6 @@ class Keyword(Literal):
         pos = data.pos
         self.get_literal(data)
         return Result(pos, self.value)
-
-
-class Accumulator(Parser):
-    def __init__(self, parsers=None):
-        super(Accumulator, self).__init__()
-        for p in parsers:
-            p.set_parent(self)
-
-    def __call__(self, data):
-        pos = data.pos
-        results = [p(data).value for p in self.children]
-        return Result(pos, results)
 
 
 class Binary(Parser):
