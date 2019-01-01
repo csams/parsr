@@ -12,7 +12,9 @@ from parseit import (Many,  # noqa 401
 
 
 def make_string(results):
-    return "".join(results)
+    if isinstance(results, list):
+        return "".join(results)
+    return results
 
 
 def make_float(sign, int_part, dec_part):
