@@ -42,7 +42,6 @@ OPT = 12  # DONE
 STRINGBUILDER = 14  # DONE
 PUSH_ACC = 15  # DONE
 LOAD_ACC = 16  # DONE
-POP_STACK = 17  # DONE
 JUMPIFFAILURE = 18  # DONE
 JUMPIFSUCCESS = 19  # DONE
 JUMP = 20  # DONE
@@ -62,7 +61,6 @@ CODE_OPS = {
     STRINGBUILDER: "STRINGBUILDER",
     PUSH_ACC: "PUSH_ACC",
     LOAD_ACC: "LOAD_ACC",
-    POP_STACK: "POP_STACK",
     JUMPIFFAILURE: "JUMPIFFAILURE",
     JUMPIFSUCCESS: "JUMPIFSUCCESS",
     JUMP: "JUMP",
@@ -92,12 +90,6 @@ def comp(tree):
     func_table = {}
 
     def inner(t):
-#        if t in seen:
-#            return
-
-#        if isinstance(t, Forward):
-#            seen.add(t)
-
         type_ = type(t)
         if type_ in (AnyChar, StringBuilder):
             return [Op(OP_CODES[type_], (t.cache, t.echars, t.name))]
@@ -141,16 +133,15 @@ def comp(tree):
             left = inner(left)
             right = inner(right)
             program.extend(left)
-            program.append(Op(JUMPIFSUCCESS, len(right) + 2))
-            program.append(Op(POP_STACK, None))
+            program.append(Op(JUMPIFSUCCESS, len(right) + 1))
             program.extend(right)
             return program
 
         elif type_ is Choice:
             program = []
             preds = [inner(c) for c in t.children]
-            length = sum(len(p) for p in preds) + (2 * len(t.children)) - 1
-            preds = intersperse(preds, [JUMPIFSUCCESS, Op(POP_STACK, None)])
+            length = sum(len(p) for p in preds) + len(t.children) - 1
+            preds = intersperse(preds, [JUMPIFSUCCESS])
 
             tmp = []
             for p in preds:
@@ -171,7 +162,6 @@ def comp(tree):
             program.append(Op(JUMPIFFAILURE, 3))
             program.append(Op(PUSH_ACC, None))
             program.append(Op(JUMP, -len(program) + 1))
-            program.append(Op(POP_STACK, None))
             program.append(Op(LOAD_ACC, (0, child.name or str(child))))
             return program
 
@@ -182,7 +172,6 @@ def comp(tree):
             program.append(Op(JUMPIFFAILURE, 3))
             program.append(Op(PUSH_ACC, None))
             program.append(Op(JUMP, -len(program) + 1))
-            program.append(Op(POP_STACK, None))
             program.append(Op(LOAD_ACC, (1, child.name or str(child))))
             return program
 
@@ -268,17 +257,16 @@ class Runner(object):
         return self.process(data, self.program, self.func_table)
 
     def process(self, data, program, func_table):
-
         ip = 0
         acc = []
-        stack = []
+        reg = None
 
         SUCCESS = True
         ERROR = False
 
         while ip < len(program):
             code, args = program[ip]
-            log.info(f"Stack  : {stack}")
+            log.info(f"Reg    : {reg}")
             log.info(f"Acc    : {acc}")
             log.info("")
             log.info(f"Op Code: {CODE_OPS[code]}({args})")
@@ -301,7 +289,7 @@ class Runner(object):
                     ret = (SUCCESS, c)
                 else:
                     ret = (ERROR, f"Expected {name} at {data.pos}. Got {p} instead.")
-                stack.append(ret)
+                reg = ret
 
             elif code is STRINGBUILDER:
                 log.debug("StringBuilder")
@@ -322,25 +310,21 @@ class Runner(object):
                         pos, c = data.next()
                         result.append(c)
                     p = data.peek()
-                stack.append((SUCCESS, "".join(result)))
-
-            elif code is POP_STACK:
-                log.debug("Pop Stack")
-                stack.pop()
+                reg = (SUCCESS, "".join(result))
 
             elif code is JUMP:
                 ip += args
                 continue
 
             elif code is JUMPIFSUCCESS:
-                flag, _ = stack[-1]
+                flag, _ = reg
                 log.debug(f"Jump if success: {flag}. From {ip} to {ip + args}")
                 if flag is SUCCESS:
                     ip += args
                     continue
 
             elif code is JUMPIFFAILURE:
-                flag, _ = stack[-1]
+                flag, _ = reg
                 log.debug(f"Jump if failure: {flag}. From {ip} to {ip + args}")
                 if flag is ERROR:
                     ip += args
@@ -348,7 +332,8 @@ class Runner(object):
 
             elif code is PUSH_ACC:
                 log.debug("Push Acc")
-                flag, result = stack.pop()
+                flag, result = reg
+                reg = None
                 acc[-1].append(result)
 
             elif code is LOAD_ACC:
@@ -356,9 +341,9 @@ class Runner(object):
                 lower, label = args
                 lacc = acc[-1]
                 if len(lacc) >= lower:
-                    stack.append((SUCCESS, lacc))
+                    reg = (SUCCESS, lacc)
                 else:
-                    stack.append((ERROR, f"Expected at least {lower} {label} at {data.pos}."))
+                    reg = (ERROR, f"Expected at least {lower} {label} at {data.pos}.")
                 acc.pop()
 
             elif code is CREATE_ACC:
@@ -371,76 +356,74 @@ class Runner(object):
 
             elif code is MAP:
                 log.debug("Map")
-                flag, result = stack.pop()
+                flag, result = reg
                 if flag:
-                    stack.append((SUCCESS, args(result)))
+                    reg = (SUCCESS, args(result))
                 else:
-                    stack.append((ERROR, result))
+                    reg = (ERROR, result)
 
             elif code is LIFT:
                 func, num_args = args
                 log.debug(f"Lift({func})")
-                flag, params = stack.pop()
+                flag, params = reg
                 if len(params) == num_args:
-                    stack.append((SUCCESS, func(*params)))
+                    reg = (SUCCESS, func(*params))
                 else:
-                    stack.append((ERROR, result))
+                    reg = (ERROR, result)
 
             elif code is OPT:
                 log.debug("Opt")
-                flag, result = stack.pop()
+                flag, result = reg
                 if flag:
-                    stack.append((SUCCESS, result))
+                    reg = (SUCCESS, result)
                 else:
-                    stack.append((SUCCESS, None))
+                    reg = (SUCCESS, None)
 
             elif code is LITERAL:
                 log.debug("Literal")
-                flag, result = stack.pop()
+                flag, result = reg
                 chars, ignore_case = result
                 if ignore_case:
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
-                            stack.append((ERROR, msg))
+                            reg = (ERROR, msg)
                             break
                     else:
-                        stack.append((SUCCESS, chars))
+                        reg = (SUCCESS, chars)
                 else:
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
-                            stack.append((ERROR, msg))
+                            reg = (ERROR, msg)
                             break
                     else:
-                        stack.append((SUCCESS, chars))
+                        reg = (SUCCESS, chars)
 
             elif code is KEYWORD:
                 log.debug("Keyword")
-                flag, result = stack.pop()
+                flag, result = reg
                 chars, value, ignore_case = result
                 if ignore_case:
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
-                            stack.append((ERROR, msg))
+                            reg = (ERROR, msg)
                             break
                     else:
-                        stack.append((SUCCESS, value))
+                        reg = (SUCCESS, value)
                 else:
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
-                            stack.append((ERROR, msg))
+                            reg = (ERROR, msg)
                             break
                     else:
-                        stack.append((SUCCESS, value))
+                        reg = (SUCCESS, value)
 
             elif code is FORWARD:
-                result = self.process(data, func_table[args], func_table)
-                stack.append(result)
+                reg = self.process(data, func_table[args], func_table)
 
             ip += 1
 
-        assert len(stack) == 1, stack
-        return stack[0]
+        return reg
