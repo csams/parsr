@@ -253,15 +253,12 @@ class Opt(Parser):
 class Between(Parser):
     def __init__(self, parser, envelope):
         super(Between, self).__init__()
+        parser = (envelope >> parser << envelope)
         parser.set_parent(self)
-        envelope.set_parent(self)
 
     def __call__(self, data):
-        parser, envelope = self.children
-        envelope(data)
-        r = parser(data)
-        envelope(data)
-        return r
+        parser = self.children[0]
+        return parser(data)
 
 
 class Map(Parser):

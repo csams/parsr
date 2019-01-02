@@ -30,44 +30,35 @@ def intersperse(lst, item):
     return result
 
 
-ANY_CHAR = 1
-BETWEEN = 2
-CHOICE = 3
+ANY_CHAR = 1  # DONE
 FORWARD = 4
 KEEP_LEFT = 5
 KEEP_RIGHT = 6
-KEYWORD = 7
-LIFT = 8
-LITERAL = 9
-MANY = 10
-MAP = 11
-OPT = 12
-SEP_BY = 13
-STRINGBUILDER = 14
-PUSH_ACC = 15
-LOAD_ACC = 16
-POP_STACK = 17
-JUMPIFFAILURE = 18
-JUMPIFSUCCESS = 19
-JUMP = 20
-PRINT = 21
-CREATE_ACC = 22
-DELETE_ACC = 23
+KEYWORD = 7  # DONE
+LIFT = 8  # DONE
+LITERAL = 9  # DONE
+MAP = 11  # DONE
+OPT = 12  # DONE
+STRINGBUILDER = 14  # DONE
+PUSH_ACC = 15  # DONE
+LOAD_ACC = 16  # DONE
+POP_STACK = 17  # DONE
+JUMPIFFAILURE = 18  # DONE
+JUMPIFSUCCESS = 19  # DONE
+JUMP = 20  # DONE
+CREATE_ACC = 22  # DONE
+DELETE_ACC = 23  # DONE
 
 CODE_OPS = {
     ANY_CHAR: "ANY_CHAR",
-    BETWEEN: "BETWEEN",
-    CHOICE: "CHOICE",
     FORWARD: "FORWARD",
     KEEP_LEFT: "KEEP_LEFT",
     KEEP_RIGHT: "KEEP_RIGHT",
     KEYWORD: "KEYWORD",
     LIFT: "LIFT",
     LITERAL: "LITERAL",
-    MANY: "MANY",
     MAP: "MAP",
     OPT: "OPT",
-    SEP_BY: "SEP_BY",
     STRINGBUILDER: "STRINGBUILDER",
     PUSH_ACC: "PUSH_ACC",
     LOAD_ACC: "LOAD_ACC",
@@ -75,25 +66,20 @@ CODE_OPS = {
     JUMPIFFAILURE: "JUMPIFFAILURE",
     JUMPIFSUCCESS: "JUMPIFSUCCESS",
     JUMP: "JUMP",
-    PRINT: "PRINT",
     CREATE_ACC: "CREATE_ACC",
     DELETE_ACC: "DELETE_ACC",
 }
 
 OP_CODES = {
     AnyChar: ANY_CHAR,
-    Between: BETWEEN,
-    Choice: CHOICE,
     Forward: FORWARD,
     KeepLeft: KEEP_LEFT,
     KeepRight: KEEP_RIGHT,
     Keyword: KEYWORD,
     Lift: LIFT,
     Literal: LITERAL,
-    Many: MANY,
     Map: MAP,
     Opt: OPT,
-    SepBy: SEP_BY,
     StringBuilder: STRINGBUILDER,
 }
 
@@ -103,13 +89,14 @@ Op = namedtuple("Op", field_names="op data")
 
 def comp(tree):
     seen = set()
+    func_table = {}
 
     def inner(t):
-        if t in seen:
-            return
+#        if t in seen:
+#            return
 
-        if isinstance(t, Forward):
-            seen.add(t)
+#        if isinstance(t, Forward):
+#            seen.add(t)
 
         type_ = type(t)
         if type_ in (AnyChar, StringBuilder):
@@ -162,14 +149,19 @@ def comp(tree):
         elif type_ is Choice:
             program = []
             preds = [inner(c) for c in t.children]
-            length = sum(len(p) for p in preds) + len(t.children) - 1
-            preds = intersperse(preds, JUMPIFSUCCESS)
+            length = sum(len(p) for p in preds) + (2 * len(t.children)) - 1
+            preds = intersperse(preds, [JUMPIFSUCCESS, Op(POP_STACK, None)])
+
+            tmp = []
             for p in preds:
-                if p is JUMPIFSUCCESS:
+                tmp.extend(p)
+
+            for t in tmp:
+                if t is JUMPIFSUCCESS:
                     offset = length - len(program)
                     program.append(Op(JUMPIFSUCCESS, offset))
                 else:
-                    program.extend(p)
+                    program.append(t)
             return program
 
         elif type_ is Many:
@@ -220,12 +212,45 @@ def comp(tree):
             program.append(Op(OP_CODES[type_], (t.func, len(t.children))))
             return program
 
-    return Runner(inner(optimize(tree)))
+        elif type_ is Literal:
+            program = [Op(OP_CODES[type_], (t.chars, t.ignore_case))]
+            return program
+
+        elif type_ is Keyword:
+            program = [Op(OP_CODES[type_], (t.chars, t.value, t.ignore_case))]
+            return program
+
+        elif type_ is SepBy:
+            program = inner(t.children[0])
+            return program
+
+        elif type_ is Between:
+            program = inner(t.children[0])
+            return program
+
+        elif type_ is KeepLeft:
+            program = inner(t.children[0])
+            return program
+
+        elif type_ is KeepRight:
+            program = inner(t.children[0])
+            return program
+
+        elif type_ is Forward:
+            if t in seen:
+                return [Op(FORWARD, t)]
+            seen.add(t)
+            program = inner(t.children[0])
+            func_table[t] = program
+            return program
+
+    return Runner(inner(optimize(tree)), func_table)
 
 
 class Runner(object):
-    def __init__(self, program):
+    def __init__(self, program, func_table):
         self.program = program
+        self.func_table = func_table
 
     def __repr__(self):
         results = []
@@ -240,7 +265,9 @@ class Runner(object):
 
     def __call__(self, data):
         data = Input(data)
-        program = self.program
+        return self.process(data, self.program, self.func_table)
+
+    def process(self, data, program, func_table):
 
         ip = 0
         acc = []
@@ -367,7 +394,53 @@ class Runner(object):
                 else:
                     stack.append((SUCCESS, None))
 
+            elif code is LITERAL:
+                log.debug("Literal")
+                flag, result = stack.pop()
+                chars, ignore_case = result
+                if ignore_case:
+                    for c in chars:
+                        if data.peek().lower() != c:
+                            msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
+                            stack.append((ERROR, msg))
+                            break
+                    else:
+                        stack.append((SUCCESS, chars))
+                else:
+                    for c in chars:
+                        if data.peek().lower() != c:
+                            msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
+                            stack.append((ERROR, msg))
+                            break
+                    else:
+                        stack.append((SUCCESS, chars))
+
+            elif code is KEYWORD:
+                log.debug("Keyword")
+                flag, result = stack.pop()
+                chars, value, ignore_case = result
+                if ignore_case:
+                    for c in chars:
+                        if data.peek().lower() != c:
+                            msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
+                            stack.append((ERROR, msg))
+                            break
+                    else:
+                        stack.append((SUCCESS, value))
+                else:
+                    for c in chars:
+                        if data.peek().lower() != c:
+                            msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
+                            stack.append((ERROR, msg))
+                            break
+                    else:
+                        stack.append((SUCCESS, value))
+
+            elif code is FORWARD:
+                result = self.process(data, func_table[args], func_table)
+                stack.append(result)
+
             ip += 1
 
         assert len(stack) == 1, stack
-        return stack[0][1]
+        return stack[0]
