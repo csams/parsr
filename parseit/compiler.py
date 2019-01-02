@@ -5,11 +5,8 @@ from parseit.optimizer import optimize
 from parseit import (And,
                      AnyChar,
                      Between,
-                     Char,
                      Choice,
-                     EscapedChar,
                      Forward,
-                     InSet,
                      KeepLeft,
                      KeepRight,
                      Keyword,
@@ -23,8 +20,8 @@ from parseit import (And,
                      SepBy,
                      StringBuilder)
 
-logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 def intersperse(lst, item):
@@ -33,54 +30,73 @@ def intersperse(lst, item):
     return result
 
 
-AND = 0
 ANY_CHAR = 1
 BETWEEN = 2
-CHAR = 3
-CHOICE = 4
-ESCAPED_CHAR = 5
-FORWARD = 6
-IN_SET = 7
-KEEP_LEFT = 8
-KEEP_RIGHT = 9
-KEYWORD = 10
-LIFT = 11
-LITERAL = 12
-MANY = 13
-MANY1 = 14
-MAP = 15
-OPT = 16
-OR = 17
-SEP_BY = 18
-STRINGBUILDER = 19
-PUSH_ACC = 22
-STORE_ACC = 26
-POP_STACK = 28
-JUMPIFFAILURE = 23
-JUMPIFSUCCESS = 24
+CHOICE = 3
+FORWARD = 4
+KEEP_LEFT = 5
+KEEP_RIGHT = 6
+KEYWORD = 7
+LIFT = 8
+LITERAL = 9
+MANY = 10
+MAP = 11
+OPT = 12
+SEP_BY = 13
+STRINGBUILDER = 14
+PUSH_ACC = 15
+LOAD_ACC = 16
+POP_STACK = 17
+JUMPIFFAILURE = 18
+JUMPIFSUCCESS = 19
+JUMP = 20
+PRINT = 21
+CREATE_ACC = 22
+DELETE_ACC = 23
+
+CODE_OPS = {
+    ANY_CHAR: "ANY_CHAR",
+    BETWEEN: "BETWEEN",
+    CHOICE: "CHOICE",
+    FORWARD: "FORWARD",
+    KEEP_LEFT: "KEEP_LEFT",
+    KEEP_RIGHT: "KEEP_RIGHT",
+    KEYWORD: "KEYWORD",
+    LIFT: "LIFT",
+    LITERAL: "LITERAL",
+    MANY: "MANY",
+    MAP: "MAP",
+    OPT: "OPT",
+    SEP_BY: "SEP_BY",
+    STRINGBUILDER: "STRINGBUILDER",
+    PUSH_ACC: "PUSH_ACC",
+    LOAD_ACC: "LOAD_ACC",
+    POP_STACK: "POP_STACK",
+    JUMPIFFAILURE: "JUMPIFFAILURE",
+    JUMPIFSUCCESS: "JUMPIFSUCCESS",
+    JUMP: "JUMP",
+    PRINT: "PRINT",
+    CREATE_ACC: "CREATE_ACC",
+    DELETE_ACC: "DELETE_ACC",
+}
 
 OP_CODES = {
-    And: AND,
     AnyChar: ANY_CHAR,
     Between: BETWEEN,
-    Char: CHAR,
     Choice: CHOICE,
-    EscapedChar: ESCAPED_CHAR,
     Forward: FORWARD,
-    InSet: IN_SET,
     KeepLeft: KEEP_LEFT,
     KeepRight: KEEP_RIGHT,
     Keyword: KEYWORD,
     Lift: LIFT,
     Literal: LITERAL,
     Many: MANY,
-    Many1: MANY1,
     Map: MAP,
     Opt: OPT,
-    Or: OR,
     SepBy: SEP_BY,
     StringBuilder: STRINGBUILDER,
 }
+
 
 Op = namedtuple("Op", field_names="op data")
 
@@ -96,23 +112,40 @@ def comp(tree):
             seen.add(t)
 
         type_ = type(t)
-        if type_ is InSet:
-            return [Op(OP_CODES[type_], (t.cache, t.name))]
-
-        elif type_ in (Char, EscapedChar):
-            return [Op(OP_CODES[type_], t.c)]
-
-        elif type_ in (AnyChar, StringBuilder):
+        if type_ in (AnyChar, StringBuilder):
             return [Op(OP_CODES[type_], (t.cache, t.echars, t.name))]
-
-        elif type_ is Map:
-            program = inner(t.children[0])
-            program.append(Op(OP_CODES[type_], t.func))
-            return program
 
         elif type_ is Opt:
             program = inner(t.children[0])
             program.append(Op(OP_CODES[type_], None))
+            return program
+
+        elif type_ is And:
+            left, right = t.children
+            program = []
+            chunks = []
+            left = inner(left)
+            right = inner(right)
+
+            chunks.append([Op(CREATE_ACC, None)])
+            chunks.append(left)
+            chunks.append(JUMPIFFAILURE)
+            chunks.append([Op(PUSH_ACC, None)])
+            chunks.append(right)
+            chunks.append(JUMPIFFAILURE)
+            chunks.append([Op(PUSH_ACC, None)])
+            chunks.append([Op(LOAD_ACC, (2, t.name or str(t)))])
+            chunks.append([Op(JUMP, 2)])
+
+            length = len(left) + len(right) + 7
+            for p in chunks:
+                if p is JUMPIFFAILURE:
+                    offset = length - len(program)
+                    program.append(Op(JUMPIFFAILURE, offset))
+                else:
+                    program.extend(p)
+
+            program.append(Op(DELETE_ACC, None))
             return program
 
         elif type_ is Or:
@@ -129,8 +162,8 @@ def comp(tree):
         elif type_ is Choice:
             program = []
             preds = [inner(c) for c in t.children]
-            preds = intersperse(preds, [JUMPIFSUCCESS])
-            length = sum(len(p) for p in preds)
+            length = sum(len(p) for p in preds) + len(t.children) - 1
+            preds = intersperse(preds, JUMPIFSUCCESS)
             for p in preds:
                 if p is JUMPIFSUCCESS:
                     offset = length - len(program)
@@ -139,14 +172,52 @@ def comp(tree):
                     program.extend(p)
             return program
 
-        elif type_ is And:
-            left, right = t.children
+        elif type_ is Many:
+            child = t.children[0]
+            program = [Op(CREATE_ACC, None)]
+            program.extend(inner(child))
+            program.append(Op(JUMPIFFAILURE, 3))
+            program.append(Op(PUSH_ACC, None))
+            program.append(Op(JUMP, -len(program) + 1))
+            program.append(Op(POP_STACK, None))
+            program.append(Op(LOAD_ACC, (0, child.name or str(child))))
+            return program
+
+        elif type_ is Many1:
+            child = t.children[0]
+            program = [Op(CREATE_ACC, None)]
+            program.extend(inner(child))
+            program.append(Op(JUMPIFFAILURE, 3))
+            program.append(Op(PUSH_ACC, None))
+            program.append(Op(JUMP, -len(program) + 1))
+            program.append(Op(POP_STACK, None))
+            program.append(Op(LOAD_ACC, (1, child.name or str(child))))
+            return program
+
+        elif type_ is Map:
+            program = inner(t.children[0])
+            program.append(Op(OP_CODES[type_], t.func))
+            return program
+
+        elif type_ is Lift:
             program = []
-            left = inner(left)
-            right = inner(right)
-            program.extend(left)
-            program.extend(right)
-            program.append(Op(OP_CODES[And], None))
+            chunks = [[Op(CREATE_ACC, None)]]
+
+            for c in t.children:
+                chunks.append(inner(c))
+                chunks.append(JUMPIFFAILURE)
+                chunks.append([Op(PUSH_ACC, None)])
+
+            chunks.append([Op(LOAD_ACC, (len(t.children), t.name or str(t)))])
+
+            length = sum(len(c) if isinstance(c, list) else 1 for c in chunks)
+            for p in chunks:
+                if p is JUMPIFFAILURE:
+                    offset = length - len(program)
+                    program.append(Op(JUMPIFFAILURE, offset))
+                else:
+                    program.extend(p)
+            program.append(Op(OP_CODES[type_], (t.func, len(t.children))))
             return program
 
     return Runner(inner(optimize(tree)))
@@ -156,11 +227,23 @@ class Runner(object):
     def __init__(self, program):
         self.program = program
 
+    def __repr__(self):
+        results = []
+        for idx, i in enumerate(self.program):
+            print(i)
+            if i.op in (JUMPIFSUCCESS, JUMPIFFAILURE, JUMP):
+                msg = f"{idx:3}| {CODE_OPS[i.op]}: {i.data} to {i.data + idx}"
+            else:
+                msg = f"{idx:3}| {CODE_OPS[i.op]}: {i.data}"
+            results.append(msg)
+        return "\n".join(results)
+
     def __call__(self, data):
         data = Input(data)
         program = self.program
-        ip = 0
 
+        ip = 0
+        acc = []
         stack = []
 
         SUCCESS = True
@@ -168,44 +251,13 @@ class Runner(object):
 
         while ip < len(program):
             code, args = program[ip]
+            log.info(f"Stack  : {stack}")
+            log.info(f"Acc    : {acc}")
+            log.info("")
+            log.info(f"Op Code: {CODE_OPS[code]}({args})")
+            log.info(f"Data   : {data.peek()}")
 
-            if code is IN_SET:
-                log.debug("InSet")
-                cache, name = args
-                c = data.peek()
-                if c in cache:
-                    _, c = data.next()
-                    ret = (SUCCESS, c)
-                else:
-                    ret = (ERROR, f"Expected {name} at {data.pos}. Got {c}.")
-                stack.append(ret)
-
-            elif code is CHAR:
-                log.debug("Char")
-                c = data.peek()
-                if c == args:
-                    _, c = data.next()
-                    ret = (SUCCESS, c)
-                else:
-                    ret = (ERROR, f"Expected {args} at {data.pos}. Got {c}.")
-                stack.append(ret)
-
-            elif code is ESCAPED_CHAR:
-                log.debug("Escaped Char")
-                ret = None
-                e = data.peek()
-                if e == "\\":
-                    pos, e = data.next()
-                    if data.peek() == args:
-                        _, c = data.next()
-                        ret = (SUCCESS, c)
-                    else:
-                        data.pos -= 1
-                if not ret:
-                    ret = (ERROR, f"Expected escaped {args} at {data.pos}. Got {e}.")
-                stack.append(ret)
-
-            elif code is ANY_CHAR:
+            if code is ANY_CHAR:
                 log.debug("AnyChar")
                 cache, echars, name = args
                 ret = None
@@ -217,7 +269,6 @@ class Runner(object):
                         ret = (SUCCESS, c)
                     else:
                         data.pos -= 1
-
                 elif p in cache:
                     pos, c = data.next()
                     ret = (SUCCESS, c)
@@ -250,6 +301,10 @@ class Runner(object):
                 log.debug("Pop Stack")
                 stack.pop()
 
+            elif code is JUMP:
+                ip += args
+                continue
+
             elif code is JUMPIFSUCCESS:
                 flag, _ = stack[-1]
                 log.debug(f"Jump if success: {flag}. From {ip} to {ip + args}")
@@ -264,16 +319,28 @@ class Runner(object):
                     ip += args
                     continue
 
-            elif code is AND:
-                log.debug("And")
-                (f0, r0) = stack.pop()
-                (f1, r1) = stack.pop()
-                if f0 and f1:
-                    stack.append((SUCCESS, (r1, r0)))
-                elif f1:
-                    stack.append((f0, r0))
+            elif code is PUSH_ACC:
+                log.debug("Push Acc")
+                flag, result = stack.pop()
+                acc[-1].append(result)
+
+            elif code is LOAD_ACC:
+                log.debug("Load Acc")
+                lower, label = args
+                lacc = acc[-1]
+                if len(lacc) >= lower:
+                    stack.append((SUCCESS, lacc))
                 else:
-                    stack.append((f1, r1))
+                    stack.append((ERROR, f"Expected at least {lower} {label} at {data.pos}."))
+                acc.pop()
+
+            elif code is CREATE_ACC:
+                log.debug("Create Acc")
+                acc.append([])
+
+            elif code is DELETE_ACC:
+                log.debug("Delete Acc")
+                acc.pop()
 
             elif code is MAP:
                 log.debug("Map")
@@ -281,7 +348,16 @@ class Runner(object):
                 if flag:
                     stack.append((SUCCESS, args(result)))
                 else:
-                    stack.append((flag, result))
+                    stack.append((ERROR, result))
+
+            elif code is LIFT:
+                func, num_args = args
+                log.debug(f"Lift({func})")
+                flag, params = stack.pop()
+                if len(params) == num_args:
+                    stack.append((SUCCESS, func(*params)))
+                else:
+                    stack.append((ERROR, result))
 
             elif code is OPT:
                 log.debug("Opt")
@@ -294,4 +370,4 @@ class Runner(object):
             ip += 1
 
         assert len(stack) == 1, stack
-        return stack[0]
+        return stack[0][1]

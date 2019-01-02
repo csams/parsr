@@ -12,6 +12,7 @@ from parseit import (Many,  # noqa 401
 
 
 def make_string(results):
+    print(results)
     if isinstance(results, list):
         return "".join(results)
     return results
