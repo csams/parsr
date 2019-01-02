@@ -31,22 +31,23 @@ def intersperse(lst, item):
 
 
 ANY_CHAR = 1  # DONE
-FORWARD = 4
-KEEP_LEFT = 5
-KEEP_RIGHT = 6
-KEYWORD = 7  # DONE
-LIFT = 8  # DONE
-LITERAL = 9  # DONE
-MAP = 11  # DONE
-OPT = 12  # DONE
-STRINGBUILDER = 14  # DONE
-PUSH_ACC = 15  # DONE
-LOAD_ACC = 16  # DONE
-JUMPIFFAILURE = 18  # DONE
-JUMPIFSUCCESS = 19  # DONE
-JUMP = 20  # DONE
-CREATE_ACC = 22  # DONE
-DELETE_ACC = 23  # DONE
+FORWARD = 2
+KEEP_LEFT = 3
+KEEP_RIGHT = 4
+KEYWORD = 5  # DONE
+LIFT = 6  # DONE
+LITERAL = 7  # DONE
+MAP = 8  # DONE
+OPT = 9  # DONE
+STRINGBUILDER = 10  # DONE
+PUSH = 11  # DONE
+POP = 12
+LOAD_ACC = 13  # DONE
+JUMPIFFAILURE = 14  # DONE
+JUMPIFSUCCESS = 15  # DONE
+JUMP = 16  # DONE
+CREATE_ACC = 17  # DONE
+DELETE_ACC = 18  # DONE
 
 CODE_OPS = {
     ANY_CHAR: "ANY_CHAR",
@@ -59,7 +60,8 @@ CODE_OPS = {
     MAP: "MAP",
     OPT: "OPT",
     STRINGBUILDER: "STRINGBUILDER",
-    PUSH_ACC: "PUSH_ACC",
+    PUSH: "PUSH",
+    POP: "POP",
     LOAD_ACC: "LOAD_ACC",
     JUMPIFFAILURE: "JUMPIFFAILURE",
     JUMPIFSUCCESS: "JUMPIFSUCCESS",
@@ -87,7 +89,7 @@ Op = namedtuple("Op", field_names="op data")
 
 def comp(tree):
     seen = set()
-    func_table = {}
+    future_table = {}
 
     def inner(t):
         type_ = type(t)
@@ -97,6 +99,29 @@ def comp(tree):
         elif type_ is Opt:
             program = inner(t.children[0])
             program.append(Op(OP_CODES[type_], None))
+            return program
+
+        elif type_ is KeepLeft:
+            left, right = t.children
+            left = inner(left)
+            right = inner(right)
+
+            program = [Op(CREATE_ACC, None)]
+            program.extend(left)
+            program.append(Op(JUMPIFFAILURE, len(right) + 4))
+            program.append(Op(PUSH, None))
+            program.extend(right)
+            program.append(Op(JUMPIFFAILURE, 2))
+            program.append(Op(POP, None))
+            program.append(Op(DELETE_ACC, None))
+            return program
+
+        elif type_ is KeepRight:
+            left, right = t.children
+            program = inner(left)
+            right = inner(right)
+            program.append(Op(JUMPIFFAILURE, len(right) + 1))
+            program.extend(right)
             return program
 
         elif type_ is And:
@@ -109,10 +134,10 @@ def comp(tree):
             chunks.append([Op(CREATE_ACC, None)])
             chunks.append(left)
             chunks.append(JUMPIFFAILURE)
-            chunks.append([Op(PUSH_ACC, None)])
+            chunks.append([Op(PUSH, None)])
             chunks.append(right)
             chunks.append(JUMPIFFAILURE)
-            chunks.append([Op(PUSH_ACC, None)])
+            chunks.append([Op(PUSH, None)])
             chunks.append([Op(LOAD_ACC, (2, t.name or str(t)))])
             chunks.append([Op(JUMP, 2)])
 
@@ -160,7 +185,7 @@ def comp(tree):
             program = [Op(CREATE_ACC, None)]
             program.extend(inner(child))
             program.append(Op(JUMPIFFAILURE, 3))
-            program.append(Op(PUSH_ACC, None))
+            program.append(Op(PUSH, None))
             program.append(Op(JUMP, -len(program) + 1))
             program.append(Op(LOAD_ACC, (0, child.name or str(child))))
             return program
@@ -170,7 +195,7 @@ def comp(tree):
             program = [Op(CREATE_ACC, None)]
             program.extend(inner(child))
             program.append(Op(JUMPIFFAILURE, 3))
-            program.append(Op(PUSH_ACC, None))
+            program.append(Op(PUSH, None))
             program.append(Op(JUMP, -len(program) + 1))
             program.append(Op(LOAD_ACC, (1, child.name or str(child))))
             return program
@@ -187,7 +212,7 @@ def comp(tree):
             for c in t.children:
                 chunks.append(inner(c))
                 chunks.append(JUMPIFFAILURE)
-                chunks.append([Op(PUSH_ACC, None)])
+                chunks.append([Op(PUSH, None)])
 
             chunks.append([Op(LOAD_ACC, (len(t.children), t.name or str(t)))])
 
@@ -217,36 +242,27 @@ def comp(tree):
             program = inner(t.children[0])
             return program
 
-        elif type_ is KeepLeft:
-            program = inner(t.children[0])
-            return program
-
-        elif type_ is KeepRight:
-            program = inner(t.children[0])
-            return program
-
         elif type_ is Forward:
             if t in seen:
                 return [Op(FORWARD, t)]
             seen.add(t)
             program = inner(t.children[0])
-            func_table[t] = program
+            future_table[t] = program
             return program
 
-    return Runner(inner(optimize(tree)), func_table)
+    return Runner(inner(optimize(tree)), future_table)
 
 
 class Runner(object):
-    def __init__(self, program, func_table):
+    def __init__(self, program, future_table):
         self.program = program
-        self.func_table = func_table
+        self.future_table = future_table
 
     def __repr__(self):
         results = []
         for idx, i in enumerate(self.program):
-            print(i)
             if i.op in (JUMPIFSUCCESS, JUMPIFFAILURE, JUMP):
-                msg = f"{idx:3}| {CODE_OPS[i.op]}: {i.data} to {i.data + idx}"
+                msg = f"{idx:3}| {CODE_OPS[i.op]} to {i.data + idx}"
             else:
                 msg = f"{idx:3}| {CODE_OPS[i.op]}: {i.data}"
             results.append(msg)
@@ -254,18 +270,20 @@ class Runner(object):
 
     def __call__(self, data):
         data = Input(data)
-        return self.process(data, self.program, self.func_table)
+        return self.process(data, self.program, self.future_table)
 
-    def process(self, data, program, func_table):
+    def process(self, data, program, future_table):
         ip = 0
         acc = []
         reg = None
 
         SUCCESS = True
         ERROR = False
+        status = SUCCESS
 
         while ip < len(program):
             code, args = program[ip]
+            log.info(f"Status : {status}")
             log.info(f"Reg    : {reg}")
             log.info(f"Acc    : {acc}")
             log.info("")
@@ -275,26 +293,26 @@ class Runner(object):
             if code is ANY_CHAR:
                 log.debug("AnyChar")
                 cache, echars, name = args
-                ret = None
                 p = data.peek()
                 if p == "\\":
                     pos, e = data.next()
                     if data.peek() in echars:
                         _, c = data.next()
-                        ret = (SUCCESS, c)
+                        status = SUCCESS
+                        reg = c
                     else:
                         data.pos -= 1
                 elif p in cache:
                     pos, c = data.next()
-                    ret = (SUCCESS, c)
+                    status = SUCCESS
+                    reg = c
                 else:
-                    ret = (ERROR, f"Expected {name} at {data.pos}. Got {p} instead.")
-                reg = ret
+                    status = ERROR
+                    reg = f"Expected {name} at {data.pos}. Got {p} instead."
 
             elif code is STRINGBUILDER:
                 log.debug("StringBuilder")
                 cache, echars, name = args
-                ret = None
                 p = data.peek()
                 result = []
                 while p == "\\" or p in cache:
@@ -310,41 +328,45 @@ class Runner(object):
                         pos, c = data.next()
                         result.append(c)
                     p = data.peek()
-                reg = (SUCCESS, "".join(result))
+                status = SUCCESS
+                reg = "".join(result)
 
             elif code is JUMP:
                 ip += args
                 continue
 
             elif code is JUMPIFSUCCESS:
-                flag, _ = reg
-                log.debug(f"Jump if success: {flag}. From {ip} to {ip + args}")
-                if flag is SUCCESS:
+                log.debug(f"Jump if success: {status}. From {ip} to {ip + args}")
+                if status is SUCCESS:
                     ip += args
                     continue
 
             elif code is JUMPIFFAILURE:
-                flag, _ = reg
-                log.debug(f"Jump if failure: {flag}. From {ip} to {ip + args}")
-                if flag is ERROR:
+                log.debug(f"Jump if failure: {status}. From {ip} to {ip + args}")
+                if status is ERROR:
                     ip += args
                     continue
 
-            elif code is PUSH_ACC:
+            elif code is PUSH:
                 log.debug("Push Acc")
-                flag, result = reg
-                reg = None
-                acc[-1].append(result)
+                acc[-1].append(reg)
+                status = True
+
+            elif code is POP:
+                log.debug("Pop Acc")
+                reg = acc[-1].pop()
+                status = True
 
             elif code is LOAD_ACC:
                 log.debug("Load Acc")
                 lower, label = args
-                lacc = acc[-1]
+                lacc = acc.pop()
                 if len(lacc) >= lower:
-                    reg = (SUCCESS, lacc)
+                    status = SUCCESS
+                    reg = lacc
                 else:
-                    reg = (ERROR, f"Expected at least {lower} {label} at {data.pos}.")
-                acc.pop()
+                    status = ERROR
+                    reg = f"Expected at least {lower} {label} at {data.pos}."
 
             elif code is CREATE_ACC:
                 log.debug("Create Acc")
@@ -356,28 +378,33 @@ class Runner(object):
 
             elif code is MAP:
                 log.debug("Map")
-                flag, result = reg
-                if flag:
-                    reg = (SUCCESS, args(result))
-                else:
-                    reg = (ERROR, result)
+                if status is SUCCESS:
+                    try:
+                        reg = args(reg)
+                    except Exception as ex:
+                        status = ERROR
+                        reg = str(ex)
 
             elif code is LIFT:
                 func, num_args = args
                 log.debug(f"Lift({func})")
-                flag, params = reg
-                if len(params) == num_args:
-                    reg = (SUCCESS, func(*params))
+                if len(reg) == num_args:
+                    try:
+                        reg = func(*reg)
+                        status = SUCCESS
+                    except Exception as ex:
+                        status = ERROR
+                        reg = str(ex)
                 else:
-                    reg = (ERROR, result)
+                    if status is SUCCESS:
+                        status = ERROR
+                        reg = f"{args} expects {num_args}. Got {len(reg)}."
 
             elif code is OPT:
                 log.debug("Opt")
-                flag, result = reg
-                if flag:
-                    reg = (SUCCESS, result)
-                else:
-                    reg = (SUCCESS, None)
+                if status is ERROR:
+                    status = SUCCESS
+                    reg = None
 
             elif code is LITERAL:
                 log.debug("Literal")
@@ -387,18 +414,22 @@ class Runner(object):
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
-                            reg = (ERROR, msg)
+                            status = ERROR
+                            reg = msg
                             break
                     else:
-                        reg = (SUCCESS, chars)
+                        status = SUCCESS
+                        reg = chars
                 else:
                     for c in chars:
-                        if data.peek().lower() != c:
+                        if data.peek() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
-                            reg = (ERROR, msg)
+                            status = ERROR
+                            reg = msg
                             break
                     else:
-                        reg = (SUCCESS, chars)
+                        status = SUCCESS
+                        reg = chars
 
             elif code is KEYWORD:
                 log.debug("Keyword")
@@ -408,22 +439,26 @@ class Runner(object):
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
-                            reg = (ERROR, msg)
+                            status = ERROR
+                            reg = msg
                             break
                     else:
-                        reg = (SUCCESS, value)
+                        status = SUCCESS
+                        reg = value
                 else:
                     for c in chars:
-                        if data.peek().lower() != c:
+                        if data.peek() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
-                            reg = (ERROR, msg)
+                            status = ERROR
+                            reg = msg
                             break
                     else:
-                        reg = (SUCCESS, value)
+                        status = SUCCESS
+                        reg = value
 
             elif code is FORWARD:
-                reg = self.process(data, func_table[args], func_table)
+                status, reg = self.process(data, future_table[args], future_table)
 
             ip += 1
 
-        return reg
+        return (status, reg)
