@@ -194,23 +194,23 @@ def comp(tree):
 
         elif type_ is Choice:
             program = []
-            preds = [inner(c) for c in t.children]
-            preds = intersperse(preds, [JUMPIFSUCCESS])
-            length = sum(len(p) if isinstance(p, list) else 3 for p in preds)
-
             tmp = [Op(PUSH_POS, None)]
-            for p in preds:
-                tmp.extend(p)
+            for c in t.children:
+                tmp.extend(inner(c))
+                tmp.append(JUMPIFSUCCESS)
+                tmp.append(Op(POP_POS, None))
+                tmp.append(Op(PUSH_POS, None))
 
-            for t in tmp:
-                if t is JUMPIFSUCCESS:
-                    offset = length - len(program) + 5
+            tmp.pop()
+
+            length = len(tmp)
+            for p in tmp:
+                if p == JUMPIFSUCCESS:
+                    offset = length - len(program) + 1
                     program.append(Op(JUMPIFSUCCESS, offset))
-                    program.append(Op(POP_POS, None))
-                    program.append(Op(PUSH_POS, None))
                 else:
-                    program.append(t)
-            program.append(Op(POP_POS, None))
+                    program.append(p)
+
             program.append(Op(JUMP, 2))
             program.append(Op(CLEAR_POS, None))
             return program
