@@ -5,6 +5,7 @@ from parseit import (And,
                      AnyChar,
                      Between,
                      Choice,
+                     Concat,
                      Forward,
                      KeepLeft,
                      KeepRight,
@@ -51,6 +52,7 @@ PUSH_POS = 20
 POP_POS = 21
 CLEAR_POS = 22
 POP_PUSH_POS = 23
+CONCAT_ACC = 24
 
 CODE_OPS = {
     ANY_CHAR: "ANY_CHAR",
@@ -164,6 +166,37 @@ def comp(tree):
             chunks.append(JUMPIFFAILURE)
             chunks.append([Op(PUSH, None)])
             chunks.append([Op(LOAD_ACC, (2, t.name or str(t)))])
+            chunks.append([Op(CLEAR_POS, None)])
+            chunks.append([Op(JUMP, 3)])
+
+            length = sum(len(c) if isinstance(c, list) else 1 for c in chunks)
+            for p in chunks:
+                if p is JUMPIFFAILURE:
+                    offset = length - len(program)
+                    program.append(Op(JUMPIFFAILURE, offset))
+                else:
+                    program.extend(p)
+
+            program.append(Op(POP_POS, None))
+            program.append(Op(DELETE_ACC, None))
+            return program
+
+        elif type_ is Concat:
+            left, right = t.children
+            program = []
+            chunks = []
+
+            left = inner(left)
+            right = inner(right)
+
+            chunks.append([Op(CREATE_ACC, None), Op(PUSH_POS, None)])
+            chunks.append(left)
+            chunks.append(JUMPIFFAILURE)
+            chunks.append([Op(PUSH, None)])
+            chunks.append(right)
+            chunks.append(JUMPIFFAILURE)
+            chunks.append([Op(PUSH, None)])
+            chunks.append([Op(CONCAT_ACC, (2, t.name or str(t)))])
             chunks.append([Op(CLEAR_POS, None)])
             chunks.append([Op(JUMP, 3)])
 
@@ -353,7 +386,7 @@ class Runner(object):
                 else:
                     pos = old_pos
                     status = ERROR
-                    reg = f"Expected at least {lower} {name}"
+                    reg = f"Expected at least {lower} {name} at {pos}."
 
             elif code == JUMPIFFAILURE:
                 if status is ERROR:
@@ -397,6 +430,21 @@ class Runner(object):
                 if len(lacc) >= lower:
                     status = SUCCESS
                     reg = lacc
+                else:
+                    status = ERROR
+                    reg = f"Expected at least {lower} {label} at {pos}."
+
+            elif code == CONCAT_ACC:
+                lower, label = args
+                lacc = acc.pop()
+                if len(lacc) >= lower:
+                    status = SUCCESS
+                    x = lacc[0]
+                    if isinstance(x, list):
+                        x.append(lacc[1])
+                        reg = x
+                    else:
+                        reg = lacc
                 else:
                     status = ERROR
                     reg = f"Expected at least {lower} {label} at {pos}."

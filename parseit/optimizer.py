@@ -2,7 +2,8 @@ import copy
 import operator
 from functools import reduce
 from itertools import groupby
-from parseit import (AnyChar,
+from parseit import (Concat,
+                     AnyChar,
                      Char,
                      Choice,
                      EscapedChar,
@@ -62,6 +63,10 @@ class _Optimizer:
         choice = self.optimize(choice)
         node.replace_with(choice)
         return choice
+
+    def opt_concat(self, node):
+        node.set_children([self.optimize(c) for c in node.children])
+        return node
 
     def fold_insets(self, choice):
         """
@@ -123,6 +128,8 @@ class _Optimizer:
 
         if isinstance(t, Or):
             t = self.opt_or(t)
+        elif isinstance(t, Concat):
+            t = self.opt_concat(t)
         elif isinstance(t, Choice):
             t = self.opt_choice(t)
         elif isinstance(t, Many1):

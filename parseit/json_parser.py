@@ -25,7 +25,7 @@ NULL = Keyword("null", None) % "NULL"
 SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL) % "SimpleValue"
 JsonValue = (WS >> SimpleValue << WS) % "Json Value"
 Key = (QuotedString << Colon) % "Key"
-KVPairs = (((WS >> Key) & JsonValue).sep_by(Comma)) % "KVPairs"
+KVPairs = (((WS >> Key) + JsonValue).sep_by(Comma)) % "KVPairs"
 JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
 JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Array"
 

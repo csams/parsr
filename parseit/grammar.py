@@ -26,6 +26,11 @@ def make_float(sign, int_part, dec_part):
     return -res if sign else res
 
 
+def make_int(sign, num):
+    res = int(num)
+    return res if not sign else -res
+
+
 _punc_set = set(string.punctuation)
 Digit = InSet(string.digits, "digit")
 NonZeroDigit = InSet(set(string.digits) - set(["0"]), "Non zero digit")
@@ -62,4 +67,5 @@ SingleQuoteString = Many(Letter | Digit | Whitespace | NonSingleQuotePunctuation
 QuotedString = ((DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote))) % "QuotedString"
 
 _Float = Lift(make_float)
-Number = _Float * Opt(Char("-")) * Many1(Digit) * (Opt(Char(".") & Many(Digit))) % "Number"
+Number = (_Float * Opt(Char("-")) * Many1(Digit) * (Opt(Char(".") + Many(Digit)))) % "Number"
+Integer = (Lift(make_int) * Opt(Char("-")) * Many1(Digit)) % "Integer"

@@ -2,7 +2,7 @@ from parseit import Char
 
 
 def test_and():
-    p = Char("a") & Char("b")
+    p = Char("a") + Char("b")
     assert p("ab")[1] == ["a", "b"]
 
 

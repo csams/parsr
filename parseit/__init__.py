@@ -19,6 +19,9 @@ class Parser(Node):
     def __rshift__(self, other):
         return KeepRight(self, other)
 
+    def __add__(self, other):
+        return Concat(self, other)
+
     def __and__(self, other):
         return And(self, other)
 
@@ -78,6 +81,10 @@ class Binary(Parser):
         super(Binary, self).__init__()
         left.set_parent(self)
         right.set_parent(self)
+
+
+class Concat(Binary):
+    pass
 
 
 class And(Binary):
