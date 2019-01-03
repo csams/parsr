@@ -1,9 +1,7 @@
 """
-This module handles primitive json parsing. It only vaguely conforms to the
-spec.
+This module handles primitive json parsing. It doesn't handle unicode or
+numbers in scientific notation.
 """
-from parseit.compiler import comp
-from parseit.optimizer import optimize
 from parseit.grammar import (AllWhitespace,
                              Colon,
                              Comma,
@@ -30,11 +28,10 @@ Key = (QuotedString << Colon) % "Key"
 KVPairs = (((WS >> Key) & JsonValue).sep_by(Comma)) % "KVPairs"
 JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
 JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Array"
-JsonValue = optimize(JsonValue)
 
 
 def loads(data):
-    status, res = comp(JsonValue)(data)
+    status, res = JsonValue(data)
     if not status:
         raise Exception(res)
     return res

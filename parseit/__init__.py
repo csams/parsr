@@ -20,20 +20,11 @@ class Input(list):
         return (p, c)
 
 
-class Result(object):
-    # A class is actually more performant than a namedtuple.
-    def __init__(self, pos, value):
-        self.pos = pos
-        self.value = value
-
-    def __repr__(self):
-        return f"Result(pos={self.pos}, value={self.value})"
-
-
 class Parser(Node):
     def __init__(self):
         super(Parser, self).__init__()
         self.name = None
+        self.code = None
 
     def __or__(self, other):
         return Or(self, other)
@@ -60,6 +51,12 @@ class Parser(Node):
     def map(self, func):
         return Map(func, self)
 
+    def __call__(self, data):
+        if not self.code:
+            from parseit.compiler import comp
+            self.code = comp(self)
+        return self.code(data)
+
     def __repr__(self):
         return self.name or super(Parser, self).__repr__()
 
@@ -78,10 +75,6 @@ class SepBy(Parser):
             results.extend(rest)
         return results
 
-    def __call__(self, data):
-        parser = self.children[0]
-        return parser(data)
-
 
 class Literal(Parser):
     def __init__(self, chars, ignore_case=False):
@@ -89,36 +82,11 @@ class Literal(Parser):
         self.ignore_case = ignore_case
         self.chars = chars if not ignore_case else chars.lower()
 
-    def get_literal(self, data):
-        res = []
-        pos = data.pos
-        for c in self.chars:
-            _, e = data.next()
-            res.append(e)
-        res = "".join(res)
-        if self.ignore_case:
-            res = res.lower()
-        if self.chars != res:
-            msg = f"Expected {self.chars} but got {res} instead at pos {pos}."
-            raise Exception(msg)
-
-        return self.chars
-
-    def __call__(self, data):
-        pos = data.pos
-        result = self.get_literal(data)
-        return Result(pos, result)
-
 
 class Keyword(Literal):
     def __init__(self, chars, value, ignore_case=False):
         super(Keyword, self).__init__(chars, ignore_case=ignore_case)
         self.value = value
-
-    def __call__(self, data):
-        pos = data.pos
-        self.get_literal(data)
-        return Result(pos, self.value)
 
 
 class Binary(Parser):
@@ -129,35 +97,19 @@ class Binary(Parser):
 
 
 class And(Binary):
-    def __call__(self, data):
-        left, right = self.children
-        val = [left(data).value, right(data).value]
-        return Result(data.pos, val)
+    pass
 
 
 class Or(Binary):
-    def __call__(self, data):
-        left, right = self.children
-        try:
-            return left(data)
-        except Exception:
-            pass
-        return right(data)
+    pass
 
 
 class KeepLeft(Binary):
-    def __call__(self, data):
-        left, right = self.children
-        res = left(data)
-        right(data)
-        return res
+    pass
 
 
 class KeepRight(Binary):
-    def __call__(self, data):
-        left, right = self.children
-        left(data)
-        return right(data)
+    pass
 
 
 class Forward(Parser):
@@ -166,9 +118,6 @@ class Forward(Parser):
 
     def __le__(self, other):
         self.set_children([other])
-
-    def __call__(self, data):
-        return self.children[0](data)
 
 
 class Lift(Parser):
@@ -183,12 +132,6 @@ class Lift(Parser):
         other.set_parent(self)
         return self
 
-    def __call__(self, data):
-        pos = data.pos
-        results = [p(data).value for p in self.children]
-        res = self.func(*results)
-        return Result(pos, res)
-
     def __repr__(self):
         return self.name or f"Lift({self.func.__name__})"
 
@@ -199,55 +142,21 @@ class Choice(Parser):
             p.set_parent(self)
         return self
 
-    def __call__(self, data):
-        msgs = []
-        for p in self.children:
-            try:
-                return p(data)
-            except Exception as ex:
-                msgs.append(str(ex))
-        raise Exception("; ".join(msgs))
-
 
 class Many(Parser):
     def __init__(self, parser):
         super(Many, self).__init__()
         parser.set_parent(self)
 
-    def __call__(self, data):
-        results = []
-        pos = data.pos
-        parser = self.children[0]
-        try:
-            while True:
-                results.append(parser(data).value)
-        except Exception:
-            pass
-        return Result(pos, results)
-
 
 class Many1(Many):
-    def __call__(self, data):
-        parser = self.children[0]
-        pos = data.pos
-        results = [parser(data).value]
-        results.extend(super(Many1, self).__call__(data).value)
-        return Result(pos, results)
+    pass
 
 
 class Opt(Parser):
     def __init__(self, parser):
         super(Opt, self).__init__()
         parser.set_parent(self)
-
-    def __call__(self, data):
-        pos = data.pos
-        parser = self.children[0]
-        try:
-            return parser(data)
-        except Exception:
-            data.pos = pos
-        return Result(pos, None)
 
 
 class Between(Parser):
@@ -256,10 +165,6 @@ class Between(Parser):
         parser = (envelope >> parser << envelope)
         parser.set_parent(self)
 
-    def __call__(self, data):
-        parser = self.children[0]
-        return parser(data)
-
 
 class Map(Parser):
     """ lifts (a -> b) to (Parser<a> -> Parser<b>) """
@@ -267,12 +172,6 @@ class Map(Parser):
         super(Map, self).__init__()
         self.func = func
         parser.set_parent(self)
-
-    def __call__(self, data):
-        parser = self.children[0]
-        pos = data.pos
-        result = parser(data)
-        return Result(pos, self.func(result.value))
 
     def __repr__(self):
         return self.name or f"Map({self.func.__name__})"
@@ -284,29 +183,12 @@ class Char(Parser):
         self.ignore_case = ignore_case
         self.c = c if not ignore_case else c.lower()
 
-    def __call__(self, data):
-        c = data.peek()
-        if self.ignore_case:
-            c = c.lower()
-        if c == self.c:
-            pos, n = data.next()
-            return Result(pos, n)
-        raise Exception(f"Expected {self.c} at offset {data.pos} Got {c} instead.")
-
     def __repr__(self):
         return f"{self.__class__.__name__}({self.c})"
 
 
 class EscapedChar(Char):
-    def __call__(self, data):
-        e = data.peek()
-        if e == "\\":
-            pos, e = data.next()
-            if data.peek() == self.c:
-                _, c = data.next()
-                return Result(pos - 1, c)
-            data.pos -= 1
-        raise Exception(f"Expected {self.c} at offset {data.pos}. Got {e} instead.")
+    pass
 
 
 class InSet(Parser):
@@ -315,13 +197,6 @@ class InSet(Parser):
         self.cache = set(values)
         self.name = label
         self.label = label
-
-    def __call__(self, data):
-        c = data.peek()
-        if c in self.cache:
-            pos, c = data.next()
-            return Result(pos, c)
-        raise Exception(f"Expected a {self.label} at offset {data.pos}. Got {c} instead.")
 
     def __repr__(self):
         return f"InSet({self.name})"
@@ -341,25 +216,6 @@ class StringBuilder(Parser):
 
     def add_echar(self, echar):
         self.echars.add(echar)
-
-    def __call__(self, data):
-        result = []
-        pos = data.pos
-        p = data.peek()
-        while p == "\\" or p in self.cache:
-            if p == "\\":
-                pos, e = data.next()
-                if data.peek() in self.echars:
-                    _, c = data.next()
-                    result.append(c)
-                else:
-                    data.pos -= 1
-
-            if p in self.cache:
-                pos, c = data.next()
-                result.append(c)
-            p = data.peek()
-        return Result(pos, "".join(result))
 
 
 class AnyChar(Parser):
@@ -389,20 +245,6 @@ class AnyChar(Parser):
         res.echars = self.echars | other.echars
         res.name = " | ".join([self.name, other.name]) if self.name else other.name
         return res
-
-    def __call__(self, data):
-        p = data.peek()
-        if p == "\\":
-            pos, e = data.next()
-            if data.peek() in self.echars:
-                _, c = data.next()
-                return Result(pos - 1, c)
-            data.pos -= 1
-
-        if p in self.cache:
-            pos, c = data.next()
-            return Result(pos, c)
-        raise Exception()
 
     def __repr__(self):
         return f"AnyChar({self.name})"

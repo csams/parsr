@@ -21,7 +21,6 @@ from parseit import (And,
                      StringBuilder)
 
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 def intersperse(lst, item):

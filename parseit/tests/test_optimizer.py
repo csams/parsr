@@ -1,9 +1,14 @@
-from parseit import Char, Input
+from parseit import AnyChar, Char, Many, StringBuilder
 from parseit.optimizer import optimize
 
 
-def test_optimize_or():
-    thing = Char("a") | Char("b") | Char("c")
-    expected = thing(Input("c")).value
-    actual = optimize(thing)(Input("c")).value
-    assert expected == actual
+def test_optimize_or_chars():
+    raw = Char("a") | Char("b") | Char("c")
+    optimized = optimize(raw)
+    assert isinstance(optimized, AnyChar)
+
+
+def test_optimized_string():
+    raw = Many(Char("a") | Char("b") | Char("c"))
+    optimized = optimize(raw)
+    assert isinstance(optimized, StringBuilder)
