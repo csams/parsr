@@ -6,7 +6,7 @@ from parseit.optimizer import optimize
 
 def test_inset():
     data = Input("a")
-    assert InSet("abc", "thing")(data).value == "a"
+    assert InSet("abc", "set of abc")(data).value == "a"
 
 
 def test_stringbuilder():

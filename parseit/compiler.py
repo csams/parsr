@@ -395,13 +395,13 @@ class Runner(object):
                     status = ERROR
                     reg = f"Expected at least {lower} {label} at {data.pos}."
 
-            elif code is CREATE_ACC:
+            elif code == CREATE_ACC:
                 acc.append([])
 
-            elif code is DELETE_ACC:
+            elif code == DELETE_ACC:
                 acc.pop()
 
-            elif code is ANY_CHAR:
+            elif code == ANY_CHAR:
                 cache, echars, name = args
                 p = data.peek()
                 if p == "\\":
@@ -420,7 +420,7 @@ class Runner(object):
                     status = ERROR
                     reg = f"Expected {name} at {data.pos}. Got {p} instead."
 
-            elif code is MAP:
+            elif code == MAP:
                 if status is SUCCESS:
                     try:
                         reg = args(reg)
@@ -428,7 +428,7 @@ class Runner(object):
                         status = ERROR
                         reg = str(ex)
 
-            elif code is LIFT:
+            elif code == LIFT:
                 func = args
                 try:
                     reg = func(*reg)
@@ -437,12 +437,12 @@ class Runner(object):
                     status = ERROR
                     reg = str(ex)
 
-            elif code is OPT:
+            elif code == OPT:
                 if status is ERROR:
                     status = SUCCESS
                     reg = None
 
-            elif code is LITERAL:
+            elif code == LITERAL:
                 chars, ignore_case = args
                 pos = data.pos
                 if ignore_case:
@@ -470,7 +470,7 @@ class Runner(object):
                         status = SUCCESS
                         reg = chars
 
-            elif code is KEYWORD:
+            elif code == KEYWORD:
                 chars, value, ignore_case = args
                 pos = data.pos
                 if ignore_case:
@@ -498,13 +498,13 @@ class Runner(object):
                         status = SUCCESS
                         reg = value
 
-            elif code is FORWARD:
+            elif code == FORWARD:
                 pos = data.pos
                 status, reg = self.process(data, future_table[args], future_table)
                 if status == ERROR:
                     data.pos = pos
 
-            elif code is PRINT:
+            elif code == PRINT:
                 log.info(args)
 
             else:
