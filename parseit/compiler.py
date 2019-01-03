@@ -117,7 +117,7 @@ def comp(tree):
             left = inner(left)
             right = inner(right)
 
-            program = [Op(PRINT, "KeepLeft")]
+            program = []
             program.append(Op(CREATE_ACC, None))
             program.append(Op(PUSH_POS, None))
             program.extend(left)
@@ -134,7 +134,7 @@ def comp(tree):
 
         elif type_ is KeepRight:
             left, right = t.children
-            program = [Op(PRINT, "KeepRight")]
+            program = []
             program.append(Op(PUSH_POS, None))
             program.extend(inner(left))
             right = inner(right)
@@ -326,15 +326,55 @@ class Runner(object):
 
         while ip < len(program):
             code, args = program[ip]
-            log.info(f"Status : {status}")
-            log.info(f"Reg    : {reg}")
-            log.info(f"Acc    : {acc}")
-            log.info("")
-            log.info(f"Op Code: {CODE_OPS[code]}({args})")
-            log.info(f"Data   : {data.peek()}")
 
-            if code is ANY_CHAR:
-                log.debug("AnyChar")
+            if code is PUSH_POS:
+                pos_stack.append(data.pos)
+
+            elif code is POP_POS:
+                data.pos = pos_stack.pop()
+
+            elif code is JUMPIFSUCCESS:
+                if status is SUCCESS:
+                    ip += args
+                    continue
+
+            elif code is JUMPIFFAILURE:
+                if status is ERROR:
+                    ip += args
+                    continue
+
+            elif code is CLEAR_POS:
+                pos_stack.pop()
+
+            elif code is JUMP:
+                ip += args
+                continue
+
+            elif code is PUSH:
+                acc[-1].append(reg)
+                status = True
+
+            elif code is POP:
+                reg = acc[-1].pop()
+                status = True
+
+            elif code is LOAD_ACC:
+                lower, label = args
+                lacc = acc.pop()
+                if len(lacc) >= lower:
+                    status = SUCCESS
+                    reg = lacc
+                else:
+                    status = ERROR
+                    reg = f"Expected at least {lower} {label} at {data.pos}."
+
+            elif code is CREATE_ACC:
+                acc.append([])
+
+            elif code is DELETE_ACC:
+                acc.pop()
+
+            elif code is ANY_CHAR:
                 cache, echars, name = args
                 p = data.peek()
                 if p == "\\":
@@ -354,7 +394,6 @@ class Runner(object):
                     reg = f"Expected {name} at {data.pos}. Got {p} instead."
 
             elif code is STRINGBUILDER:
-                log.debug("StringBuilder")
                 cache, echars, name = args
                 p = data.peek()
                 result = []
@@ -374,53 +413,7 @@ class Runner(object):
                 status = SUCCESS
                 reg = "".join(result)
 
-            elif code is JUMP:
-                ip += args
-                continue
-
-            elif code is JUMPIFSUCCESS:
-                log.debug(f"Jump if success: {status}. From {ip} to {ip + args}")
-                if status is SUCCESS:
-                    ip += args
-                    continue
-
-            elif code is JUMPIFFAILURE:
-                log.debug(f"Jump if failure: {status}. From {ip} to {ip + args}")
-                if status is ERROR:
-                    ip += args
-                    continue
-
-            elif code is PUSH:
-                log.debug("Push Acc")
-                acc[-1].append(reg)
-                status = True
-
-            elif code is POP:
-                log.debug("Pop Acc")
-                reg = acc[-1].pop()
-                status = True
-
-            elif code is LOAD_ACC:
-                log.debug("Load Acc")
-                lower, label = args
-                lacc = acc.pop()
-                if len(lacc) >= lower:
-                    status = SUCCESS
-                    reg = lacc
-                else:
-                    status = ERROR
-                    reg = f"Expected at least {lower} {label} at {data.pos}."
-
-            elif code is CREATE_ACC:
-                log.debug("Create Acc")
-                acc.append([])
-
-            elif code is DELETE_ACC:
-                log.debug("Delete Acc")
-                acc.pop()
-
             elif code is MAP:
-                log.debug("Map")
                 if status is SUCCESS:
                     try:
                         reg = args(reg)
@@ -430,7 +423,6 @@ class Runner(object):
 
             elif code is LIFT:
                 func = args
-                log.debug(f"Lift({func})")
                 try:
                     reg = func(*reg)
                     status = SUCCESS
@@ -439,13 +431,11 @@ class Runner(object):
                     reg = str(ex)
 
             elif code is OPT:
-                log.debug("Opt")
                 if status is ERROR:
                     status = SUCCESS
                     reg = None
 
             elif code is LITERAL:
-                log.debug("Literal")
                 chars, ignore_case = args
                 pos = data.pos
                 if ignore_case:
@@ -474,7 +464,6 @@ class Runner(object):
                         reg = chars
 
             elif code is KEYWORD:
-                log.debug("Keyword")
                 chars, value, ignore_case = args
                 pos = data.pos
                 if ignore_case:
@@ -503,32 +492,13 @@ class Runner(object):
                         reg = value
 
             elif code is FORWARD:
-                log.info(f"Calling: {args}")
-                log.info(f"Status : {status}")
-                log.info(f"Reg    : {reg}")
-                log.info(f"Acc    : {acc}")
                 pos = data.pos
                 status, reg = self.process(data, future_table[args], future_table)
                 if status == ERROR:
                     data.pos = pos
-                log.info(f"NewStat: {status}")
-                log.info(f"NewReg : {reg}")
-                log.info("")
 
             elif code is PRINT:
                 log.info(args)
-
-            elif code is PUSH_POS:
-                log.debug(f"Push pos {data.pos}")
-                pos_stack.append(data.pos)
-
-            elif code is POP_POS:
-                data.pos = pos_stack.pop()
-                log.debug(f"Pop pos {data.pos}")
-
-            elif code is CLEAR_POS:
-                log.debug(f"Clear 1 pos {pos_stack}")
-                pos_stack.pop()
 
             else:
                 log.warn(f"Unrecognized code: ({code}, {args})")

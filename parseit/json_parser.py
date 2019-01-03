@@ -2,7 +2,7 @@
 This module handles primitive json parsing. It only vaguely conforms to the
 spec.
 """
-from parseit import Input
+from parseit.compiler import comp
 from parseit.optimizer import optimize
 from parseit.grammar import (AllWhitespace,
                              Colon,
@@ -34,7 +34,10 @@ JsonValue = optimize(JsonValue)
 
 
 def loads(data):
-    return JsonValue(Input(data)).value
+    status, res = comp(JsonValue)(data)
+    if not status:
+        raise Exception(res)
+    return res
 
 
 def load(f):
@@ -43,7 +46,6 @@ def load(f):
 
 if __name__ == "__main__":
     import sys
-    from pprint import pprint
 
     if len(sys.argv) == 2:
         arg = sys.argv[1]
@@ -52,6 +54,6 @@ if __name__ == "__main__":
         else:
             with open(sys.argv[1]) as f:
                 data = f.read()
-        pprint(loads(data))
+        loads(data)
     else:
         print("Pass a file.")
