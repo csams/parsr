@@ -102,10 +102,10 @@ class _Optimizer:
         choice = self.fold_anychars(choice)
         return choice
 
-    def opt_many(self, many):
+    def opt_many(self, many, lower):
         many.set_children([self.optimize(many.children[0])])
         if isinstance(many.children[0], AnyChar):
-            sb = StringBuilder(many.children[0])
+            sb = StringBuilder(many.children[0], lower)
             many.replace_with(sb)
             return sb
         return many
@@ -118,15 +118,17 @@ class _Optimizer:
             # Don't recurse into Forward nodes, which are declarations of
             # recursive non terminals. Allow recursion into all other nodes
             # because optimization rules may need a chance to inspect them
-            # several times as they transform.
+            # several times.
             self.seen.add(t)
 
         if isinstance(t, Or):
             t = self.opt_or(t)
         elif isinstance(t, Choice):
             t = self.opt_choice(t)
-        elif isinstance(t, Many) and not isinstance(t, Many1):
-            t = self.opt_many(t)
+        elif isinstance(t, Many1):
+            t = self.opt_many(t, 1)
+        elif isinstance(t, Many):
+            t = self.opt_many(t, 0)
         elif isinstance(t, (InSet, Char, AnyChar)):
             t = self.opt_char(t)
         else:

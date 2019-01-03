@@ -62,4 +62,4 @@ SingleQuoteString = Many(Letter | Digit | Whitespace | NonSingleQuotePunctuation
 QuotedString = ((DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote))) % "QuotedString"
 
 _Float = Lift(make_float)
-Number = _Float * Opt(Char("-")) * Many1(Digit).map(make_string) * (Opt(Char(".") & Many(Digit))) % "Number"
+Number = _Float * Opt(Char("-")) * Many1(Digit) * (Opt(Char(".") & Many(Digit))) % "Number"

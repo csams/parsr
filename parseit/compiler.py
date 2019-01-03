@@ -102,8 +102,11 @@ def comp(tree):
 
     def inner(t):
         type_ = type(t)
-        if type_ in (AnyChar, StringBuilder):
+        if type_ is AnyChar:
             return [Op(OP_CODES[type_], (t.cache, t.echars, t.name))]
+
+        if type_ is StringBuilder:
+            return [Op(OP_CODES[type_], (t.cache, t.echars, t.lower, t.name or str(t)))]
 
         elif type_ is Opt:
             program = [Op(PUSH_POS, None)]
@@ -329,24 +332,30 @@ class Runner(object):
             code, args = program[ip]
 
             if code is STRINGBUILDER:
-                cache, echars, name = args
+                cache, echars, lower, name = args
+                old_pos = data.pos
                 p = data.peek()
                 result = []
                 while p == "\\" or p in cache:
                     if p == "\\":
-                        pos, e = data.next()
+                        data.next()
                         if data.peek() in echars:
-                            _, c = data.next()
+                            c = data.next()
                             result.append(c)
                         else:
                             data.pos -= 1
 
                     if p in cache:
-                        pos, c = data.next()
+                        c = data.next()
                         result.append(c)
                     p = data.peek()
-                status = SUCCESS
-                reg = "".join(result)
+                if len(result) >= lower:
+                    status = SUCCESS
+                    reg = "".join(result)
+                else:
+                    data.pos = old_pos
+                    status = ERROR
+                    reg = f"Expected at least {lower} {name}"
 
             elif code == JUMPIFFAILURE:
                 if status is ERROR:
@@ -404,7 +413,7 @@ class Runner(object):
                 cache, echars, name = args
                 p = data.peek()
                 if p == "\\":
-                    pos, e = data.next()
+                    data.next()
                     if data.peek() in echars:
                         _, c = data.next()
                         status = SUCCESS
@@ -412,7 +421,7 @@ class Runner(object):
                     else:
                         data.pos -= 1
                 elif p in cache:
-                    pos, c = data.next()
+                    c = data.next()
                     status = SUCCESS
                     reg = c
                 else:
@@ -443,14 +452,14 @@ class Runner(object):
 
             elif code == LITERAL:
                 chars, ignore_case = args
-                pos = data.pos
+                old_pos = data.pos
                 if ignore_case:
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
                             status = ERROR
                             reg = msg
-                            data.pos = pos
+                            data.pos = old_pos
                             break
                         data.next()
                     else:
@@ -462,7 +471,7 @@ class Runner(object):
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
                             status = ERROR
                             reg = msg
-                            data.pos = pos
+                            data.pos = old_pos
                             break
                         data.next()
                     else:
@@ -471,14 +480,14 @@ class Runner(object):
 
             elif code == KEYWORD:
                 chars, value, ignore_case = args
-                pos = data.pos
+                old_pos = data.pos
                 if ignore_case:
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
                             status = ERROR
                             reg = msg
-                            data.pos = pos
+                            data.pos = old_pos
                             break
                         data.next()
                     else:
@@ -490,7 +499,7 @@ class Runner(object):
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
                             status = ERROR
                             reg = msg
-                            data.pos = pos
+                            data.pos = old_pos
                             break
                         data.next()
                     else:
@@ -498,10 +507,10 @@ class Runner(object):
                         reg = value
 
             elif code == FORWARD:
-                pos = data.pos
+                old_pos = data.pos
                 status, reg = self.process(data, future_table[args], future_table)
                 if status == ERROR:
-                    data.pos = pos
+                    data.pos = old_pos
 
             elif code == PRINT:
                 log.info(args)

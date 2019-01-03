@@ -16,8 +16,7 @@ class Input(list):
     def next(self):
         p = self.pos
         self.pos += 1
-        c = self[p]
-        return (p, c)
+        return self[p]
 
 
 class Parser(Node):
@@ -203,8 +202,9 @@ class InSet(Parser):
 
 
 class StringBuilder(Parser):
-    def __init__(self, anyChar=None):
+    def __init__(self, anyChar=None, lower=0):
         super(StringBuilder, self).__init__()
+        self.lower = lower
         self.cache = anyChar.cache if anyChar else set()
         self.echars = anyChar.echars if anyChar else set()
 

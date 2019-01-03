@@ -17,8 +17,8 @@ from parseit.grammar import (AllWhitespace,
 
 
 WS = Many(AllWhitespace)
-JsonArray = Forward()
-JsonObject = Forward()
+JsonArray = Forward() % "Json Array"
+JsonObject = Forward() % "Json Object"
 TRUE = Keyword("true", True) % "TRUE"
 FALSE = Keyword("false", False) % "FALSE"
 NULL = Keyword("null", None) % "NULL"
