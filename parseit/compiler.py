@@ -247,24 +247,30 @@ def comp(tree):
             return program
 
         elif type_ is Lift:
-            program = []
-            chunks = [[Op(CREATE_ACC, None)]]
-
+            program = [Op(CREATE_ACC, None), Op(PUSH_POS, None)]
+            tmp = []
             for c in t.children:
-                chunks.append(inner(c))
-                chunks.append(JUMPIFFAILURE)
-                chunks.append([Op(PUSH, None)])
+                tmp.extend(inner(c))
+                tmp.append(JUMPIFFAILURE)
+                tmp.append(Op(PUSH, None))
+                tmp.append(Op(CLEAR_POS, None))
+                tmp.append(Op(PUSH_POS, None))
 
-            chunks.append([Op(LOAD_ACC, (len(t.children), t.name or str(t)))])
+            tmp.pop()
 
-            length = sum(len(c) if isinstance(c, list) else 1 for c in chunks)
-            for p in chunks:
-                if p is JUMPIFFAILURE:
-                    offset = length - len(program)
+            length = len(tmp) + 1
+            for p in tmp:
+                if p == JUMPIFFAILURE:
+                    offset = length - len(program) + 4
                     program.append(Op(JUMPIFFAILURE, offset))
                 else:
-                    program.extend(p)
-            program.append(Op(OP_CODES[type_], (t.func, len(t.children))))
+                    program.append(p)
+
+            program.append(Op(LOAD_ACC, (len(t.children), str(t))))
+            program.append(Op(OP_CODES[type_], t.func))
+            program.append(Op(JUMP, 3))
+            program.append(Op(POP_POS, None))  # ERROR
+            program.append(Op(DELETE_ACC, None))  # DONE
             return program
 
         elif type_ is Literal:
@@ -320,12 +326,12 @@ class Runner(object):
 
         while ip < len(program):
             code, args = program[ip]
-#            log.info(f"Status : {status}")
-#            log.info(f"Reg    : {reg}")
-#            log.info(f"Acc    : {acc}")
-#            log.info("")
-#            log.info(f"Op Code: {CODE_OPS[code]}({args})")
-#            log.info(f"Data   : {data.peek()}")
+            log.info(f"Status : {status}")
+            log.info(f"Reg    : {reg}")
+            log.info(f"Acc    : {acc}")
+            log.info("")
+            log.info(f"Op Code: {CODE_OPS[code]}({args})")
+            log.info(f"Data   : {data.peek()}")
 
             if code is ANY_CHAR:
                 log.debug("AnyChar")
@@ -423,19 +429,14 @@ class Runner(object):
                         reg = str(ex)
 
             elif code is LIFT:
-                func, num_args = args
+                func = args
                 log.debug(f"Lift({func})")
-                if len(reg) == num_args:
-                    try:
-                        reg = func(*reg)
-                        status = SUCCESS
-                    except Exception as ex:
-                        status = ERROR
-                        reg = str(ex)
-                else:
-                    if status is SUCCESS:
-                        status = ERROR
-                        reg = f"{args} expects {num_args}. Got {len(reg)}."
+                try:
+                    reg = func(*reg)
+                    status = SUCCESS
+                except Exception as ex:
+                    status = ERROR
+                    reg = str(ex)
 
             elif code is OPT:
                 log.debug("Opt")
