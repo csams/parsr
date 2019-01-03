@@ -52,6 +52,7 @@ PRINT = 19
 PUSH_POS = 20
 POP_POS = 21
 CLEAR_POS = 22
+POP_PUSH_POS = 23
 
 CODE_OPS = {
     ANY_CHAR: "ANY_CHAR",
@@ -76,6 +77,7 @@ CODE_OPS = {
     PUSH_POS: "PUSH_POS",
     POP_POS: "POP_POS",
     CLEAR_POS: "CLEAR_POS",
+    POP_PUSH_POS: "POP_PUSH_POS",
 }
 
 OP_CODES = {
@@ -184,11 +186,11 @@ def comp(tree):
             program = [Op(PUSH_POS, None)]
             program.extend(left)
             program.append(Op(JUMPIFSUCCESS, len(right) + 5))
-            program.append(Op(POP_POS, None))
-            program.append(Op(PUSH_POS, None))
+            program.append(Op(POP_PUSH_POS, None))
             program.extend(right)
-            program.append(Op(JUMPIFSUCCESS, 2))
+            program.append(Op(JUMPIFSUCCESS, 3))
             program.append(Op(POP_POS, None))
+            program.append(Op(JUMP, 2))
             program.append(Op(CLEAR_POS, None))
             return program
 
@@ -198,10 +200,10 @@ def comp(tree):
             for c in t.children:
                 tmp.extend(inner(c))
                 tmp.append(JUMPIFSUCCESS)
-                tmp.append(Op(POP_POS, None))
-                tmp.append(Op(PUSH_POS, None))
+                tmp.append(Op(POP_PUSH_POS, None))
 
             tmp.pop()
+            tmp.append(Op(POP_POS, None))
 
             length = len(tmp)
             for p in tmp:
@@ -327,38 +329,63 @@ class Runner(object):
         while ip < len(program):
             code, args = program[ip]
 
-            if code is PUSH_POS:
-                pos_stack.append(data.pos)
+            if code is STRINGBUILDER:
+                cache, echars, name = args
+                p = data.peek()
+                result = []
+                while p == "\\" or p in cache:
+                    if p == "\\":
+                        pos, e = data.next()
+                        if data.peek() in echars:
+                            _, c = data.next()
+                            result.append(c)
+                        else:
+                            data.pos -= 1
 
-            elif code is POP_POS:
-                data.pos = pos_stack.pop()
+                    if p in cache:
+                        pos, c = data.next()
+                        result.append(c)
+                    p = data.peek()
+                status = SUCCESS
+                reg = "".join(result)
 
-            elif code is JUMPIFSUCCESS:
-                if status is SUCCESS:
-                    ip += args
-                    continue
-
-            elif code is JUMPIFFAILURE:
+            elif code == JUMPIFFAILURE:
                 if status is ERROR:
                     ip += args
                     continue
 
-            elif code is CLEAR_POS:
+            elif code == PUSH_POS:
+                pos_stack.append(data.pos)
+
+            elif code == CLEAR_POS:
                 pos_stack.pop()
 
-            elif code is JUMP:
+            elif code == POP_POS:
+                data.pos = pos_stack.pop()
+
+            elif code == JUMP:
                 ip += args
                 continue
 
-            elif code is PUSH:
+            elif code == POP_PUSH_POS:
+                a = pos_stack.pop()
+                data.pos = a
+                pos_stack.append(a)
+
+            elif code == JUMPIFSUCCESS:
+                if status is SUCCESS:
+                    ip += args
+                    continue
+
+            elif code == PUSH:
                 acc[-1].append(reg)
                 status = True
 
-            elif code is POP:
+            elif code == POP:
                 reg = acc[-1].pop()
                 status = True
 
-            elif code is LOAD_ACC:
+            elif code == LOAD_ACC:
                 lower, label = args
                 lacc = acc.pop()
                 if len(lacc) >= lower:
@@ -392,26 +419,6 @@ class Runner(object):
                 else:
                     status = ERROR
                     reg = f"Expected {name} at {data.pos}. Got {p} instead."
-
-            elif code is STRINGBUILDER:
-                cache, echars, name = args
-                p = data.peek()
-                result = []
-                while p == "\\" or p in cache:
-                    if p == "\\":
-                        pos, e = data.next()
-                        if data.peek() in echars:
-                            _, c = data.next()
-                            result.append(c)
-                        else:
-                            data.pos -= 1
-
-                    if p in cache:
-                        pos, c = data.next()
-                        result.append(c)
-                    p = data.peek()
-                status = SUCCESS
-                reg = "".join(result)
 
             elif code is MAP:
                 if status is SUCCESS:
