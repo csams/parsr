@@ -12,7 +12,6 @@ from parseit import (Many,  # noqa 401
 
 
 def make_string(results):
-    print(results)
     if isinstance(results, list):
         return "".join(results)
     return results
@@ -58,8 +57,8 @@ EscapedSingleQuote = EscapedChar("'")
 Backslash = Char("\\")
 
 String = Many(Letter | Digit | Punctuation | Whitespace).map(make_string) % "String"
-DoubleQuoteString = Many(Letter | Digit | Whitespace | NonDoubleQuotePunctuation | EscapedDoubleQuote | Backslash)
-SingleQuoteString = Many(Letter | Digit | Whitespace | NonSingleQuotePunctuation | EscapedSingleQuote | Backslash)
+DoubleQuoteString = Many(Letter | Digit | Whitespace | NonDoubleQuotePunctuation | EscapedDoubleQuote | Backslash) % "Double Quoted String"
+SingleQuoteString = Many(Letter | Digit | Whitespace | NonSingleQuotePunctuation | EscapedSingleQuote | Backslash) % "Single Quoted String"
 QuotedString = ((DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote)).map(make_string)) % "QuotedString"
 
 _Float = Lift(make_float)

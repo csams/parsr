@@ -31,9 +31,9 @@ def intersperse(lst, item):
 
 
 ANY_CHAR = 1  # DONE
-FORWARD = 2
-KEEP_LEFT = 3
-KEEP_RIGHT = 4
+FORWARD = 2  # DONE
+KEEP_LEFT = 3  # DONE
+KEEP_RIGHT = 4  # DONE
 KEYWORD = 5  # DONE
 LIFT = 6  # DONE
 LITERAL = 7  # DONE
@@ -41,13 +41,17 @@ MAP = 8  # DONE
 OPT = 9  # DONE
 STRINGBUILDER = 10  # DONE
 PUSH = 11  # DONE
-POP = 12
+POP = 12  # DONE
 LOAD_ACC = 13  # DONE
 JUMPIFFAILURE = 14  # DONE
 JUMPIFSUCCESS = 15  # DONE
 JUMP = 16  # DONE
 CREATE_ACC = 17  # DONE
 DELETE_ACC = 18  # DONE
+PRINT = 19
+PUSH_POS = 20
+POP_POS = 21
+CLEAR_POS = 22
 
 CODE_OPS = {
     ANY_CHAR: "ANY_CHAR",
@@ -68,6 +72,10 @@ CODE_OPS = {
     JUMP: "JUMP",
     CREATE_ACC: "CREATE_ACC",
     DELETE_ACC: "DELETE_ACC",
+    PRINT: "PRINT",
+    PUSH_POS: "PUSH_POS",
+    POP_POS: "POP_POS",
+    CLEAR_POS: "CLEAR_POS",
 }
 
 OP_CODES = {
@@ -97,7 +105,10 @@ def comp(tree):
             return [Op(OP_CODES[type_], (t.cache, t.echars, t.name))]
 
         elif type_ is Opt:
-            program = inner(t.children[0])
+            program = [Op(PUSH_POS, None)]
+            program.extend(inner(t.children[0]))
+            program.append(Op(JUMPIFSUCCESS, 2))
+            program.append(Op(POP_POS, None))
             program.append(Op(OP_CODES[type_], None))
             return program
 
@@ -106,32 +117,43 @@ def comp(tree):
             left = inner(left)
             right = inner(right)
 
-            program = [Op(CREATE_ACC, None)]
+            program = [Op(PRINT, "KeepLeft")]
+            program.append(Op(CREATE_ACC, None))
+            program.append(Op(PUSH_POS, None))
             program.extend(left)
-            program.append(Op(JUMPIFFAILURE, len(right) + 4))
+            program.append(Op(JUMPIFFAILURE, len(right) + 6))
             program.append(Op(PUSH, None))
             program.extend(right)
-            program.append(Op(JUMPIFFAILURE, 2))
+            program.append(Op(JUMPIFFAILURE, 4))
             program.append(Op(POP, None))
+            program.append(Op(CLEAR_POS, None))
+            program.append(Op(JUMP, 2))
+            program.append(Op(POP_POS, None))
             program.append(Op(DELETE_ACC, None))
             return program
 
         elif type_ is KeepRight:
             left, right = t.children
-            program = inner(left)
+            program = [Op(PRINT, "KeepRight")]
+            program.append(Op(PUSH_POS, None))
+            program.extend(inner(left))
             right = inner(right)
-            program.append(Op(JUMPIFFAILURE, len(right) + 1))
+            program.append(Op(JUMPIFFAILURE, len(right) + 3))
             program.extend(right)
+            program.append(Op(CLEAR_POS, None))
+            program.append(Op(JUMP, 2))
+            program.append(Op(POP_POS, None))
             return program
 
         elif type_ is And:
             left, right = t.children
             program = []
             chunks = []
+
             left = inner(left)
             right = inner(right)
 
-            chunks.append([Op(CREATE_ACC, None)])
+            chunks.append([Op(CREATE_ACC, None), Op(PUSH_POS, None)])
             chunks.append(left)
             chunks.append(JUMPIFFAILURE)
             chunks.append([Op(PUSH, None)])
@@ -139,9 +161,10 @@ def comp(tree):
             chunks.append(JUMPIFFAILURE)
             chunks.append([Op(PUSH, None)])
             chunks.append([Op(LOAD_ACC, (2, t.name or str(t)))])
-            chunks.append([Op(JUMP, 2)])
+            chunks.append([Op(CLEAR_POS, None)])
+            chunks.append([Op(JUMP, 3)])
 
-            length = len(left) + len(right) + 7
+            length = sum(len(c) if isinstance(c, list) else 1 for c in chunks)
             for p in chunks:
                 if p is JUMPIFFAILURE:
                     offset = length - len(program)
@@ -149,54 +172,72 @@ def comp(tree):
                 else:
                     program.extend(p)
 
+            program.append(Op(POP_POS, None))
             program.append(Op(DELETE_ACC, None))
             return program
 
         elif type_ is Or:
             left, right = t.children
-            program = []
             left = inner(left)
             right = inner(right)
+
+            program = [Op(PUSH_POS, None)]
             program.extend(left)
-            program.append(Op(JUMPIFSUCCESS, len(right) + 1))
+            program.append(Op(JUMPIFSUCCESS, len(right) + 5))
+            program.append(Op(POP_POS, None))
+            program.append(Op(PUSH_POS, None))
             program.extend(right)
+            program.append(Op(JUMPIFSUCCESS, 2))
+            program.append(Op(POP_POS, None))
+            program.append(Op(CLEAR_POS, None))
             return program
 
         elif type_ is Choice:
             program = []
             preds = [inner(c) for c in t.children]
-            length = sum(len(p) for p in preds) + len(t.children) - 1
             preds = intersperse(preds, [JUMPIFSUCCESS])
+            length = sum(len(p) if isinstance(p, list) else 3 for p in preds)
 
-            tmp = []
+            tmp = [Op(PUSH_POS, None)]
             for p in preds:
                 tmp.extend(p)
 
             for t in tmp:
                 if t is JUMPIFSUCCESS:
-                    offset = length - len(program)
+                    offset = length - len(program) + 5
                     program.append(Op(JUMPIFSUCCESS, offset))
+                    program.append(Op(POP_POS, None))
+                    program.append(Op(PUSH_POS, None))
                 else:
                     program.append(t)
+            program.append(Op(POP_POS, None))
+            program.append(Op(JUMP, 2))
+            program.append(Op(CLEAR_POS, None))
             return program
 
         elif type_ is Many:
             child = t.children[0]
             program = [Op(CREATE_ACC, None)]
+            program.append(Op(PUSH_POS, None))
             program.extend(inner(child))
-            program.append(Op(JUMPIFFAILURE, 3))
+            program.append(Op(JUMPIFFAILURE, 4))
             program.append(Op(PUSH, None))
+            program.append(Op(CLEAR_POS, None))
             program.append(Op(JUMP, -len(program) + 1))
+            program.append(Op(POP_POS, None))
             program.append(Op(LOAD_ACC, (0, child.name or str(child))))
             return program
 
         elif type_ is Many1:
             child = t.children[0]
             program = [Op(CREATE_ACC, None)]
+            program.append(Op(PUSH_POS, None))
             program.extend(inner(child))
-            program.append(Op(JUMPIFFAILURE, 3))
+            program.append(Op(JUMPIFFAILURE, 4))
             program.append(Op(PUSH, None))
+            program.append(Op(CLEAR_POS, None))
             program.append(Op(JUMP, -len(program) + 1))
+            program.append(Op(POP_POS, None))
             program.append(Op(LOAD_ACC, (1, child.name or str(child))))
             return program
 
@@ -234,13 +275,8 @@ def comp(tree):
             program = [Op(OP_CODES[type_], (t.chars, t.value, t.ignore_case))]
             return program
 
-        elif type_ is SepBy:
-            program = inner(t.children[0])
-            return program
-
-        elif type_ is Between:
-            program = inner(t.children[0])
-            return program
+        elif type_ in (Between, SepBy):
+            return inner(t.children[0])
 
         elif type_ is Forward:
             if t in seen:
@@ -275,6 +311,7 @@ class Runner(object):
     def process(self, data, program, future_table):
         ip = 0
         acc = []
+        pos_stack = []
         reg = None
 
         SUCCESS = True
@@ -283,12 +320,12 @@ class Runner(object):
 
         while ip < len(program):
             code, args = program[ip]
-            log.info(f"Status : {status}")
-            log.info(f"Reg    : {reg}")
-            log.info(f"Acc    : {acc}")
-            log.info("")
-            log.info(f"Op Code: {CODE_OPS[code]}({args})")
-            log.info(f"Data   : {data.peek()}")
+#            log.info(f"Status : {status}")
+#            log.info(f"Reg    : {reg}")
+#            log.info(f"Acc    : {acc}")
+#            log.info("")
+#            log.info(f"Op Code: {CODE_OPS[code]}({args})")
+#            log.info(f"Data   : {data.peek()}")
 
             if code is ANY_CHAR:
                 log.debug("AnyChar")
@@ -408,15 +445,17 @@ class Runner(object):
 
             elif code is LITERAL:
                 log.debug("Literal")
-                flag, result = reg
-                chars, ignore_case = result
+                chars, ignore_case = args
+                pos = data.pos
                 if ignore_case:
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
                             status = ERROR
                             reg = msg
+                            data.pos = pos
                             break
+                        data.next()
                     else:
                         status = SUCCESS
                         reg = chars
@@ -426,22 +465,26 @@ class Runner(object):
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
                             status = ERROR
                             reg = msg
+                            data.pos = pos
                             break
+                        data.next()
                     else:
                         status = SUCCESS
                         reg = chars
 
             elif code is KEYWORD:
                 log.debug("Keyword")
-                flag, result = reg
-                chars, value, ignore_case = result
+                chars, value, ignore_case = args
+                pos = data.pos
                 if ignore_case:
                     for c in chars:
                         if data.peek().lower() != c:
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
                             status = ERROR
                             reg = msg
+                            data.pos = pos
                             break
+                        data.next()
                     else:
                         status = SUCCESS
                         reg = value
@@ -451,13 +494,43 @@ class Runner(object):
                             msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
                             status = ERROR
                             reg = msg
+                            data.pos = pos
                             break
+                        data.next()
                     else:
                         status = SUCCESS
                         reg = value
 
             elif code is FORWARD:
+                log.info(f"Calling: {args}")
+                log.info(f"Status : {status}")
+                log.info(f"Reg    : {reg}")
+                log.info(f"Acc    : {acc}")
+                pos = data.pos
                 status, reg = self.process(data, future_table[args], future_table)
+                if status == ERROR:
+                    data.pos = pos
+                log.info(f"NewStat: {status}")
+                log.info(f"NewReg : {reg}")
+                log.info("")
+
+            elif code is PRINT:
+                log.info(args)
+
+            elif code is PUSH_POS:
+                log.debug(f"Push pos {data.pos}")
+                pos_stack.append(data.pos)
+
+            elif code is POP_POS:
+                data.pos = pos_stack.pop()
+                log.debug(f"Pop pos {data.pos}")
+
+            elif code is CLEAR_POS:
+                log.debug(f"Clear 1 pos {pos_stack}")
+                pos_stack.pop()
+
+            else:
+                log.warn(f"Unrecognized code: ({code}, {args})")
 
             ip += 1
 
