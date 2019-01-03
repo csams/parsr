@@ -4,21 +4,6 @@ from parseit.tree import Node
 log = logging.getLogger(__name__)
 
 
-class Input(list):
-    def __init__(self, *args):
-        super(Input, self).__init__(*args)
-        self.pos = 0
-        self.length = len(self)
-
-    def peek(self):
-        return self[self.pos] if self.pos < self.length else None
-
-    def next(self):
-        p = self.pos
-        self.pos += 1
-        return self[p]
-
-
 class Parser(Node):
     def __init__(self):
         super(Parser, self).__init__()

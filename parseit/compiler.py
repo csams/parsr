@@ -1,6 +1,5 @@
 import logging
-from collections import namedtuple
-from parseit import Input
+from collections import deque, namedtuple
 from parseit.optimizer import optimize
 from parseit import (And,
                      AnyChar,
@@ -315,13 +314,14 @@ class Runner(object):
         return "\n".join(results)
 
     def __call__(self, data):
-        data = Input(data)
-        return self.process(data, self.program, self.future_table)
+        data = list(data)
+        data.append(None)
+        return self.process(0, data, self.program, self.future_table)
 
-    def process(self, data, program, future_table):
+    def process(self, pos, data, program, future_table):
         ip = 0
-        acc = []
-        pos_stack = []
+        acc = deque()
+        pos_stack = deque()
         reg = None
 
         SUCCESS = True
@@ -333,27 +333,25 @@ class Runner(object):
 
             if code is STRINGBUILDER:
                 cache, echars, lower, name = args
-                old_pos = data.pos
-                p = data.peek()
+                old_pos = pos
+                p = data[pos]
                 result = []
                 while p == "\\" or p in cache:
-                    if p == "\\":
-                        data.next()
-                        if data.peek() in echars:
-                            c = data.next()
-                            result.append(c)
-                        else:
-                            data.pos -= 1
+                    if p == "\\" and data[pos + 1] in echars:
+                        result.append(data[pos + 1])
+                        pos += 2
+                    elif p in cache:
+                        result.append(p)
+                        pos += 1
+                    else:
+                        break
+                    p = data[pos]
 
-                    if p in cache:
-                        c = data.next()
-                        result.append(c)
-                    p = data.peek()
                 if len(result) >= lower:
                     status = SUCCESS
                     reg = "".join(result)
                 else:
-                    data.pos = old_pos
+                    pos = old_pos
                     status = ERROR
                     reg = f"Expected at least {lower} {name}"
 
@@ -363,13 +361,13 @@ class Runner(object):
                     continue
 
             elif code == PUSH_POS:
-                pos_stack.append(data.pos)
+                pos_stack.append(pos)
 
             elif code == CLEAR_POS:
                 pos_stack.pop()
 
             elif code == POP_POS:
-                data.pos = pos_stack.pop()
+                pos = pos_stack.pop()
 
             elif code == JUMP:
                 ip += args
@@ -377,7 +375,7 @@ class Runner(object):
 
             elif code == POP_PUSH_POS:
                 a = pos_stack.pop()
-                data.pos = a
+                pos = a
                 pos_stack.append(a)
 
             elif code == JUMPIFSUCCESS:
@@ -401,7 +399,7 @@ class Runner(object):
                     reg = lacc
                 else:
                     status = ERROR
-                    reg = f"Expected at least {lower} {label} at {data.pos}."
+                    reg = f"Expected at least {lower} {label} at {pos}."
 
             elif code == CREATE_ACC:
                 acc.append([])
@@ -411,22 +409,18 @@ class Runner(object):
 
             elif code == ANY_CHAR:
                 cache, echars, name = args
-                p = data.peek()
-                if p == "\\":
-                    data.next()
-                    if data.peek() in echars:
-                        _, c = data.next()
-                        status = SUCCESS
-                        reg = c
-                    else:
-                        data.pos -= 1
-                elif p in cache:
-                    c = data.next()
+                p = data[pos]
+                if p == "\\" and data[pos + 1] in echars:
                     status = SUCCESS
-                    reg = c
+                    reg = data[pos + 1]
+                    pos += 2
+                elif p in cache:
+                    status = SUCCESS
+                    reg = p
+                    pos += 1
                 else:
                     status = ERROR
-                    reg = f"Expected {name} at {data.pos}. Got {p} instead."
+                    reg = f"Expected {name} at {pos}. Got {p} instead."
 
             elif code == MAP:
                 if status is SUCCESS:
@@ -452,65 +446,68 @@ class Runner(object):
 
             elif code == LITERAL:
                 chars, ignore_case = args
-                old_pos = data.pos
+                old_pos = pos
                 if ignore_case:
                     for c in chars:
-                        if data.peek().lower() != c:
-                            msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
+                        n = data[pos]
+                        if n.lower() != c:
+                            msg = f"Expected {c} at {pos}. Got {n}"
                             status = ERROR
                             reg = msg
-                            data.pos = old_pos
+                            pos = old_pos
                             break
-                        data.next()
+                        pos += 1
                     else:
                         status = SUCCESS
                         reg = chars
                 else:
                     for c in chars:
-                        if data.peek() != c:
-                            msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
+                        n = data[pos]
+                        if n != c:
+                            msg = f"Expected {c} at {pos}. Got {n}"
                             status = ERROR
                             reg = msg
-                            data.pos = old_pos
+                            pos = old_pos
                             break
-                        data.next()
+                        pos += 1
                     else:
                         status = SUCCESS
                         reg = chars
 
             elif code == KEYWORD:
                 chars, value, ignore_case = args
-                old_pos = data.pos
+                old_pos = pos
                 if ignore_case:
                     for c in chars:
-                        if data.peek().lower() != c:
-                            msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
+                        e = data[pos]
+                        if e.lower() != c:
+                            msg = f"Expected {c} at {pos}. Got {e}"
                             status = ERROR
                             reg = msg
-                            data.pos = old_pos
+                            pos = old_pos
                             break
-                        data.next()
+                        pos += 1
                     else:
                         status = SUCCESS
                         reg = value
                 else:
                     for c in chars:
-                        if data.peek() != c:
-                            msg = f"Expected {c} at {data.pos}. Got {data.peek()}"
+                        e = data[pos]
+                        if e != c:
+                            msg = f"Expected {c} at {pos}. Got {e}"
                             status = ERROR
                             reg = msg
-                            data.pos = old_pos
+                            pos = old_pos
                             break
-                        data.next()
+                        pos += 1
                     else:
                         status = SUCCESS
                         reg = value
 
             elif code == FORWARD:
-                old_pos = data.pos
-                status, reg = self.process(data, future_table[args], future_table)
-                if status == ERROR:
-                    data.pos = old_pos
+                old_pos = pos
+                status, reg, new_pos = self.process(pos, data, future_table[args], future_table)
+                pos = old_pos if status == ERROR else new_pos
 
             elif code == PRINT:
                 log.info(args)
@@ -520,4 +517,4 @@ class Runner(object):
 
             ip += 1
 
-        return (status, reg)
+        return (status, reg, pos)

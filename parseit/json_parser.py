@@ -31,7 +31,7 @@ JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Ar
 
 
 def loads(data):
-    status, res = JsonValue(data)
+    status, res, pos = JsonValue(data)
     if not status:
         raise Exception(res)
     return res
@@ -43,6 +43,7 @@ def load(f):
 
 if __name__ == "__main__":
     import sys
+    from pprint import pprint
 
     if len(sys.argv) == 2:
         arg = sys.argv[1]
@@ -51,6 +52,6 @@ if __name__ == "__main__":
         else:
             with open(sys.argv[1]) as f:
                 data = f.read()
-        loads(data)
+        pprint(loads(data))
     else:
         print("Pass a file.")

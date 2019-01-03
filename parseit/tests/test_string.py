@@ -1,11 +1,10 @@
 import string
-from parseit import Between, Char, Input, StringBuilder
+from parseit import Between, Char, StringBuilder
 from parseit.grammar import InSet, String, QuotedString
 
 
 def test_inset():
-    data = Input("a")
-    assert InSet("abc", "set of abc")(data)[1] == "a"
+    assert InSet("abc", "set of abc")("a")[1] == "a"
 
 
 def test_stringbuilder():
