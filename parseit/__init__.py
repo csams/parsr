@@ -8,7 +8,22 @@ class Parser(Node):
     def __init__(self):
         super(Parser, self).__init__()
         self.name = None
-        self.code = None
+        self._code = None
+        self._tree = None
+
+    @property
+    def code(self):
+        if not self._code:
+            from parseit.compiler import comp
+            self._code = comp(self)
+        return self._code
+
+    @property
+    def tree(self):
+        if not self._tree:
+            from parseit.optimizer import optimize
+            self._tree = optimize(self)
+        return self._tree
 
     def __or__(self, other):
         return Or(self, other)
@@ -39,9 +54,6 @@ class Parser(Node):
         return Map(func, self)
 
     def __call__(self, data):
-        if not self.code:
-            from parseit.compiler import comp
-            self.code = comp(self)
         return self.code(data)
 
     def __repr__(self):
