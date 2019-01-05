@@ -8,6 +8,7 @@ class Parser(Node):
     def __init__(self):
         super(Parser, self).__init__()
         self.name = None
+        self.debug = False
         self._code = None
         self._tree = None
 
@@ -19,7 +20,7 @@ class Parser(Node):
         return self._code
 
     @property
-    def tree(self):
+    def optimized_tree(self):
         if not self._tree:
             from parseit.optimizer import optimize
             self._tree = optimize(self)
@@ -116,6 +117,18 @@ class KeepRight(Binary):
 
 
 class Forward(Parser):
+    """
+    Forward declaration of a recursive non-terminal.
+
+    .. code-block:: python
+       expr = Forward()
+       term = Forward()
+
+       factor = (Number | (Char("(") >> expr << Char(")")))
+       term <= ((factor + (Char("*") | Char("/")) + term) | factor)
+       expr <= ((term + (Char("+") | Char("-")) + expr) | term)
+
+    """
     def __init__(self):
         super(Forward, self).__init__()
 
@@ -124,6 +137,20 @@ class Forward(Parser):
 
 
 class Lift(Parser):
+    """
+    Parse several things in a row and then pass them to the positional
+    arguments of Lift.
+
+    .. code-block:: python
+       def f(a, b, c):
+           return a + b + c
+
+    `Lift(f) * Number * Number * Number` will parse three numbers and then
+    call f with them. The result of the entire expression is the result of f.
+
+    `*` is meant to evoke applicative functor syntax:
+    `pure(f) <*> Number <*> Number <*> Number`
+    """
     def __init__(self, func, args=None):
         super(Lift, self).__init__()
         self.func = func
@@ -140,6 +167,7 @@ class Lift(Parser):
 
 
 class Choice(Parser):
+    """ Optimization of nested Or nodes. """
     def add_predicates(self, preds):
         for p in preds:
             p.set_parent(self)
@@ -170,7 +198,6 @@ class Between(Parser):
 
 
 class Map(Parser):
-    """ lifts (a -> b) to (Parser<a> -> Parser<b>) """
     def __init__(self, func, parser):
         super(Map, self).__init__()
         self.func = func

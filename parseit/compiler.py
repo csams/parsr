@@ -22,13 +22,6 @@ from parseit import (And,
 
 log = logging.getLogger(__name__)
 
-
-def intersperse(lst, item):
-    result = [item] * (len(lst) * 2 - 1)
-    result[0::2] = lst
-    return result
-
-
 ANY_CHAR = 1  # DONE
 FORWARD = 2  # DONE
 KEEP_LEFT = 3  # DONE
@@ -81,20 +74,6 @@ CODE_OPS = {
     CONCAT_ACC: "CONCAT_ACC",
 }
 
-OP_CODES = {
-    AnyChar: ANY_CHAR,
-    Forward: FORWARD,
-    KeepLeft: KEEP_LEFT,
-    KeepRight: KEEP_RIGHT,
-    Keyword: KEYWORD,
-    Lift: LIFT,
-    Literal: LITERAL,
-    Map: MAP,
-    Opt: OPT,
-    StringBuilder: STRINGBUILDER,
-}
-
-
 Op = namedtuple("Op", field_names="op data")
 
 
@@ -105,17 +84,17 @@ def comp(tree):
     def inner(t):
         type_ = type(t)
         if type_ is AnyChar:
-            return [Op(OP_CODES[type_], (t.cache, t.echars, t.name))]
+            return [Op(ANY_CHAR, (t.cache, t.echars, t.name))]
 
-        if type_ is StringBuilder:
-            return [Op(OP_CODES[type_], (t.cache, t.echars, t.lower, t.name or str(t)))]
+        elif type_ is StringBuilder:
+            return [Op(STRINGBUILDER, (t.cache, t.echars, t.lower, t.name or str(t)))]
 
         elif type_ is Opt:
             program = [Op(PUSH_POS, None)]
             program.extend(inner(t.children[0]))
             program.append(Op(JUMPIFSUCCESS, 2))
             program.append(Op(POP_POS, None))
-            program.append(Op(OP_CODES[type_], None))
+            program.append(Op(OPT, None))
             return program
 
         elif type_ is KeepLeft:
@@ -280,7 +259,7 @@ def comp(tree):
 
         elif type_ is Map:
             program = inner(t.children[0])
-            program.append(Op(OP_CODES[type_], t.func))
+            program.append(Op(MAP, t.func))
             return program
 
         elif type_ is Lift:
@@ -304,18 +283,18 @@ def comp(tree):
                     program.append(p)
 
             program.append(Op(LOAD_ACC, (len(t.children), str(t))))
-            program.append(Op(OP_CODES[type_], t.func))
+            program.append(Op(LIFT, t.func))
             program.append(Op(JUMP, 3))
             program.append(Op(POP_POS, None))  # ERROR
             program.append(Op(DELETE_ACC, None))  # DONE
             return program
 
         elif type_ is Literal:
-            program = [Op(OP_CODES[type_], (t.chars, t.ignore_case))]
+            program = [Op(LITERAL, (t.chars, t.ignore_case))]
             return program
 
         elif type_ is Keyword:
-            program = [Op(OP_CODES[type_], (t.chars, t.value, t.ignore_case))]
+            program = [Op(KEYWORD, (t.chars, t.value, t.ignore_case))]
             return program
 
         elif type_ in (Between, SepBy):
@@ -356,11 +335,12 @@ class Runner(object):
         ip = 0
         acc = deque()
         pos_stack = deque()
-        reg = None
 
         SUCCESS = True
         ERROR = False
+
         status = SUCCESS
+        reg = None
 
         while ip < len(program):
             code, args = program[ip]
@@ -419,11 +399,11 @@ class Runner(object):
 
             elif code == PUSH:
                 acc[-1].append(reg)
-                status = True
+                status = SUCCESS
 
             elif code == POP:
                 reg = acc[-1].pop()
-                status = True
+                status = SUCCESS
 
             elif code == LOAD_ACC:
                 lower, label = args
