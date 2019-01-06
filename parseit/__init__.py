@@ -39,7 +39,7 @@ class Parser(Node):
         return Concat(self, other)
 
     def __and__(self, other):
-        return And(self, other)
+        return FollowedBy(self, other)
 
     def __mod__(self, name):
         self.name = name
@@ -100,7 +100,7 @@ class Concat(Binary):
     pass
 
 
-class And(Binary):
+class FollowedBy(Binary):
     pass
 
 

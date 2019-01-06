@@ -20,8 +20,6 @@ def reduce(args):
 
 
 expr = Forward()
-term = Forward()
-
 factor = (Number | (Char("(") >> expr << Char(")")))
-term <= (factor + Many((Char("*") | Char("/")) + factor)).map(reduce)
+term = (factor + Many((Char("*") | Char("/")) + factor)).map(reduce)
 expr <= (term + Many((Char("+") | Char("-")) + term)).map(reduce)

@@ -1,7 +1,7 @@
 import logging
 from collections import deque, namedtuple
 from parseit.optimizer import optimize
-from parseit import (And,
+from parseit import (FollowedBy,
                      AnyChar,
                      Between,
                      Choice,
@@ -130,7 +130,7 @@ def comp(tree):
             program.append(Op(POP_POS, None))
             return program
 
-        elif type_ is And:
+        elif type_ is FollowedBy:
             left, right = t.children
             program = []
             chunks = []
@@ -142,12 +142,10 @@ def comp(tree):
             chunks.append(left)
             chunks.append(JUMPIFFAILURE)
             chunks.append([Op(PUSH, None)])
+            chunks.append([Op(PUSH_POS, None)])
             chunks.append(right)
             chunks.append(JUMPIFFAILURE)
-            chunks.append([Op(PUSH, None)])
-            chunks.append([Op(LOAD_ACC, (2, t.name or str(t)))])
-            chunks.append([Op(CLEAR_POS, None)])
-            chunks.append([Op(JUMP, 3)])
+            chunks.append([Op(POP, None)])
 
             length = sum(len(c) if isinstance(c, list) else 1 for c in chunks)
             for p in chunks:
