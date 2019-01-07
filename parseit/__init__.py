@@ -315,6 +315,21 @@ class EnclosedComment(Parser):
         return c[0] + "".join(c[1]) + "".join(c[2:])
 
 
+class OneLineComment(Parser):
+    def __init__(self, s):
+        super(OneLineComment, self).__init__()
+        Start = Literal(s)
+        parser = ((Start + Many(OneChar / EOL) + OneChar + EOL) | (Start + EOL)).map(self.combine)
+        parser.set_parent(self)
+
+    @staticmethod
+    def combine(c):
+        if len(c) == 2:
+            return "".join(c)
+        c[1] = "".join(c[1])
+        return "".join(c)
+
+
 def make_string(results):
     if isinstance(results, list):
         return "".join(results)

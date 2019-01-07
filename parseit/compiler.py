@@ -17,6 +17,7 @@ from parseit import (FollowedBy,
                      Many1,
                      Map,
                      NotFollowedBy,
+                     OneLineComment,
                      Opt,
                      Or,
                      SepBy,
@@ -339,7 +340,7 @@ def comp(tree):
             program = [Op(KEYWORD, (t.chars, t.value, t.ignore_case))]
             return program
 
-        elif type_ in (Between, EnclosedComment, SepBy):
+        elif type_ in (Between, EnclosedComment, OneLineComment, SepBy):
             return inner(t.children[0])
 
         elif type_ is Forward:
