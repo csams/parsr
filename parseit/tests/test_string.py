@@ -1,6 +1,5 @@
 import string
-from parseit import Between, Char, StringBuilder
-from parseit.grammar import InSet, String, QuotedString
+from parseit import Between, Char, InSet, String, StringBuilder, QuotedString
 
 
 def test_inset():

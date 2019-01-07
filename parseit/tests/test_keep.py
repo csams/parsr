@@ -1,5 +1,5 @@
 from parseit.compiler import comp
-from parseit.grammar import Colon, QuotedString
+from parseit import Colon, QuotedString
 
 
 def test_keepleft():

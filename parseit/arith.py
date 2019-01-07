@@ -2,7 +2,7 @@
 Simple arithmetic with recursive definitions, operator precedence, and left
 associativity.
 """
-from parseit.grammar import Char, Forward, Many, Number
+from parseit import Char, Forward, Many, Number
 
 
 def reduce(args):

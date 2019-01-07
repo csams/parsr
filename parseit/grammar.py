@@ -39,6 +39,7 @@ NonSingleQuotePunctuation = InSet(_punc_set - set("'\\"), "non single quote punc
 NonDoubleQuotePunctuation = InSet(_punc_set - set("\"\\"), "non double quote punctuation character")
 Punctuation = InSet(_punc_set, "punctuation character")
 Printable = InSet(string.printable, "printable character")
+OneChar = Printable
 Whitespace = InSet(set(string.whitespace) - set("\n\r"), "whitespace except newlines")
 EOL = InSet("\n\r", "newline")
 AllWhitespace = (Whitespace | EOL)

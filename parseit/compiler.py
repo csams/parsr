@@ -6,6 +6,7 @@ from parseit import (FollowedBy,
                      Between,
                      Choice,
                      Concat,
+                     EnclosedComment,
                      Forward,
                      KeepLeft,
                      KeepRight,
@@ -15,12 +16,16 @@ from parseit import (FollowedBy,
                      Many,
                      Many1,
                      Map,
+                     NotFollowedBy,
                      Opt,
                      Or,
                      SepBy,
                      StringBuilder)
 
 log = logging.getLogger(__name__)
+
+SUCCESS = True
+ERROR = False
 
 ANY_CHAR = 1  # DONE
 FORWARD = 2  # DONE
@@ -46,6 +51,7 @@ POP_POS = 21
 CLEAR_POS = 22
 POP_PUSH_POS = 23
 CONCAT_ACC = 24
+SET_STATUS = 25
 
 CODE_OPS = {
     ANY_CHAR: "ANY_CHAR",
@@ -72,6 +78,7 @@ CODE_OPS = {
     CLEAR_POS: "CLEAR_POS",
     POP_PUSH_POS: "POP_PUSH_POS",
     CONCAT_ACC: "CONCAT_ACC",
+    SET_STATUS: "SET_STATUS",
 }
 
 Op = namedtuple("Op", field_names="op data")
@@ -144,14 +151,51 @@ def comp(tree):
             chunks.append([Op(PUSH, None)])
             chunks.append([Op(PUSH_POS, None)])
             chunks.append(right)
+            chunks.append([Op(POP_POS, None)])
             chunks.append(JUMPIFFAILURE)
             chunks.append([Op(POP, None)])
+            chunks.append([Op(CLEAR_POS, None)])
+            chunks.append([Op(JUMP, 2)])
 
             length = sum(len(c) if isinstance(c, list) else 1 for c in chunks)
             for p in chunks:
                 if p is JUMPIFFAILURE:
                     offset = length - len(program)
                     program.append(Op(JUMPIFFAILURE, offset))
+                else:
+                    program.extend(p)
+
+            program.append(Op(POP_POS, None))
+            program.append(Op(DELETE_ACC, None))
+            return program
+
+        elif type_ is NotFollowedBy:
+            left, right = t.children
+            program = []
+            chunks = []
+
+            left = inner(left)
+            right = inner(right)
+
+            chunks.append([Op(CREATE_ACC, None), Op(PUSH_POS, None)])
+            chunks.append(left)
+            chunks.append(JUMPIFFAILURE)
+            chunks.append([Op(PUSH, None)])
+            chunks.append([Op(PUSH_POS, None)])
+            chunks.append(right)
+            chunks.append([Op(POP_POS, None)])
+            chunks.append([Op(JUMPIFSUCCESS, 3)])
+            chunks.append([Op(POP, None)])
+            chunks.append([Op(JUMP, 5)])
+            chunks.append([Op(SET_STATUS, ERROR)])
+            chunks.append([Op(CLEAR_POS, None)])
+            chunks.append([Op(JUMP, 2)])
+
+            length = sum(len(c) if isinstance(c, list) else 1 for c in chunks)
+            for p in chunks:
+                if p is JUMPIFFAILURE:
+                    offset = length - len(program)
+                    program.append(Op(p, offset))
                 else:
                     program.extend(p)
 
@@ -295,7 +339,7 @@ def comp(tree):
             program = [Op(KEYWORD, (t.chars, t.value, t.ignore_case))]
             return program
 
-        elif type_ in (Between, SepBy):
+        elif type_ in (Between, EnclosedComment, SepBy):
             return inner(t.children[0])
 
         elif type_ is Forward:
@@ -333,9 +377,6 @@ class Runner(object):
         ip = 0
         acc = deque()
         pos_stack = deque()
-
-        SUCCESS = True
-        ERROR = False
 
         status = SUCCESS
         reg = None
@@ -535,6 +576,9 @@ class Runner(object):
                 old_pos = pos
                 status, reg, new_pos = self.process(pos, data, future_table[args], future_table)
                 pos = old_pos if status == ERROR else new_pos
+
+            elif code == SET_STATUS:
+                status = args
 
             elif code == PRINT:
                 log.info(args)

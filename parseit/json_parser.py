@@ -2,18 +2,18 @@
 This module handles primitive json parsing. It doesn't handle unicode or
 numbers in scientific notation.
 """
-from parseit.grammar import (AllWhitespace,
-                             Colon,
-                             Comma,
-                             Forward,
-                             Keyword,
-                             LeftBracket,
-                             LeftCurly,
-                             Many,
-                             Number,
-                             RightBracket,
-                             RightCurly,
-                             QuotedString)
+from parseit import (AllWhitespace,
+                     Colon,
+                     Comma,
+                     Forward,
+                     Keyword,
+                     LeftBracket,
+                     LeftCurly,
+                     Many,
+                     Number,
+                     RightBracket,
+                     RightCurly,
+                     QuotedString)
 
 
 WS = Many(AllWhitespace)
