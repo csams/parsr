@@ -1,3 +1,6 @@
+"""
+parseit is a project I'm using to learn about parser combinators.
+"""
 import logging
 import string
 from parseit.tree import Node
@@ -9,7 +12,6 @@ class Parser(Node):
     def __init__(self):
         super(Parser, self).__init__()
         self.name = None
-        self.debug = False
         self._code = None
         self._tree = None
 
@@ -338,30 +340,23 @@ OneChar = Printable
 Whitespace = InSet(set(string.whitespace) - set("\n\r"), "whitespace except newlines")
 EOL = InSet("\n\r", "newline")
 AllWhitespace = (Whitespace | EOL)
-
 LeftCurly = Char("{")
 RightCurly = Char("}")
 LeftBracket = Char("[")
 RightBracket = Char("]")
 LeftParen = Char("(")
 RightParen = Char(")")
-
 Colon = Char(":")
 Comma = Char(",")
-
 DoubleQuote = Char("\"")
 EscapedDoubleQuote = EscapedChar('"')
-
 SingleQuote = Char("'")
 EscapedSingleQuote = EscapedChar("'")
-
 Backslash = Char("\\")
-
 String = Many(Letter | Digit | Punctuation | Whitespace) % "String"
 DoubleQuoteString = Many(Letter | Digit | Whitespace | NonDoubleQuotePunctuation | EscapedDoubleQuote | Backslash) % "Double Quoted String"
 SingleQuoteString = Many(Letter | Digit | Whitespace | NonSingleQuotePunctuation | EscapedSingleQuote | Backslash) % "Single Quoted String"
 QuotedString = ((DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote))) % "QuotedString"
-
 _Float = Lift(make_float)
 Number = (_Float * Opt(Char("-")) * Many1(Digit) * (Opt(Char(".") + Many(Digit)))) % "Number"
 Integer = (Lift(make_int) * Opt(Char("-")) * Many1(Digit)) % "Integer"
