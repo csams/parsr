@@ -321,18 +321,13 @@ def make_string(results):
     return results
 
 
-def make_float(sign, int_part, dec_part):
+def make_number(sign, int_part, dec_part):
     if dec_part:
         res = ".".join([int_part, dec_part[1]])
     else:
         res = int_part
-    res = float(res)
+    res = float(res) if "." in res else int(res)
     return -res if sign else res
-
-
-def make_int(sign, num):
-    res = int(num)
-    return res if not sign else -res
 
 
 _punc_set = set(string.punctuation)
@@ -364,6 +359,4 @@ String = Many(Letter | Digit | Punctuation | Whitespace) % "String"
 DoubleQuoteString = Many(Letter | Digit | Whitespace | NonDoubleQuotePunctuation | EscapedDoubleQuote | Backslash) % "Double Quoted String"
 SingleQuoteString = Many(Letter | Digit | Whitespace | NonSingleQuotePunctuation | EscapedSingleQuote | Backslash) % "Single Quoted String"
 QuotedString = ((DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote))) % "QuotedString"
-_Float = Lift(make_float)
-Number = (_Float * Opt(Char("-")) * Many1(Digit) * (Opt(Char(".") + Many(Digit)))) % "Number"
-Integer = (Lift(make_int) * Opt(Char("-")) * Many1(Digit)) % "Integer"
+Number = (Lift(make_number) * Opt(Char("-")) * Many1(Digit) * (Opt(Char(".") + Many(Digit)))) % "Number"

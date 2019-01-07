@@ -68,10 +68,9 @@ JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket)
 ```
 
 ```
-In [1]: from parseit.json_parser import JsonValue                                                                                                                                              
+In [1]: from parseit.json_parser import JsonValue
 
 In [2]: JsonValue('{"a": 15, "b": [2, 3, 4], "c": {"ip": "192.168.0.1", "port":
         8080}}')[1]                                                                                                    
-Out[2]: {'a': 15.0, 'b': [2.0, 3.0, 4.0], 'c': {'ip': '192.168.0.1', 'port':
-    8080.0}}
+Out[2]: {'a': 15, 'b': [2, 3, 4], 'c': {'ip': '192.168.0.1', 'port': 8080}}
 ```
