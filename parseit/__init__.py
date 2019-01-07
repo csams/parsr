@@ -205,9 +205,10 @@ class OrUntil(Parser):
 
 
 class Opt(Parser):
-    def __init__(self, parser):
+    def __init__(self, parser, default=None):
         super(Opt, self).__init__()
         parser.set_parent(self)
+        self.default = default
 
 
 class Between(Parser):
@@ -304,8 +305,14 @@ class AnyChar(Parser):
 class EnclosedComment(Parser):
     def __init__(self, s, e):
         super(EnclosedComment, self).__init__()
-        p = Literal(s) + Many(OneChar / Literal(e)) + OneChar + Literal(e)
+        Start = Literal(s)
+        End = Literal(e)
+        p = (Start + Many(OneChar / End) + OneChar + End).map(self.combine)
         p.set_parent(self)
+
+    @staticmethod
+    def combine(c):
+        return c[0] + "".join(c[1]) + "".join(c[2:])
 
 
 def make_string(results):

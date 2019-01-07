@@ -101,7 +101,7 @@ def comp(tree):
             program.extend(inner(t.children[0]))
             program.append(Op(JUMPIFSUCCESS, 2))
             program.append(Op(POP_POS, None))
-            program.append(Op(OPT, None))
+            program.append(Op(OPT, t.default))
             return program
 
         elif type_ is KeepLeft:
@@ -510,7 +510,7 @@ class Runner(object):
             elif code == OPT:
                 if status is ERROR:
                     status = SUCCESS
-                    reg = None
+                    reg = args
 
             elif code == LITERAL:
                 chars, ignore_case = args
