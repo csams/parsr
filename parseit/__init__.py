@@ -1,4 +1,5 @@
 import string
+from bisect import bisect_left
 from io import StringIO
 
 
@@ -45,6 +46,27 @@ def render(tree):
     print(text_format(tree))
 
 
+class Ctx:
+    def __init__(self, lines):
+        self.error_pos = -1
+        self.error_msg = None
+        self.lines = [i for i, x in enumerate(lines) if x == "\n"]
+
+    def set(self, pos, msg):
+        if pos >= self.error_pos:
+            self.error_pos = pos
+            self.error_msg = msg
+
+    def line(self, pos):
+        return bisect_left(self.lines, pos)
+
+    def col(self, pos):
+        p = self.line(pos)
+        if p == 0:
+            return pos
+        return pos - self.lines[p - 1]
+
+
 class Parser(Node):
     def __init__(self):
         super().__init__()
@@ -87,8 +109,14 @@ class Parser(Node):
 
     def __call__(self, data):
         data = list(data)
-        data.append(None)
-        return self.process(0, data)
+        data.append(None)  # add a terminal so we don't overrun
+        ctx = Ctx(data)
+        try:
+            return self.process(0, data, ctx)
+        except Exception:
+            lineno = ctx.line(ctx.error_pos)
+            colno = ctx.col(ctx.error_pos)
+            raise Exception(f"At line {lineno} column {colno}: {ctx.error_msg}")
 
     def __repr__(self):
         return self.name or f"{self.__class__.__name__}"
@@ -102,11 +130,11 @@ class Choice(Parser):
     def __or__(self, other):
         return self.add_child(other)
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         ex = None
         for c in self.children:
             try:
-                return c.process(pos, data)
+                return c.process(pos, data, ctx)
             except Exception as e:
                 ex = e
         raise ex
@@ -120,10 +148,10 @@ class Seq(Parser):
     def __add__(self, other):
         return self.add_child(other)
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         results = []
         for p in self.children:
-            pos, res = p.process(pos, data)
+            pos, res = p.process(pos, data, ctx)
             results.append(res)
         return pos, results
 
@@ -133,12 +161,12 @@ class Many(Parser):
         super().__init__()
         self.add_child(p)
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         results = []
         p = self.children[0]
         while True:
             try:
-                pos, res = p.process(pos, data)
+                pos, res = p.process(pos, data, ctx)
                 results.append(res)
             except Exception:
                 break
@@ -150,11 +178,11 @@ class FollowedBy(Parser):
         super().__init__()
         self.set_children([p, f])
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         left, right = self.children
         new, res = left.process(pos, data)
         try:
-            right.process(new, data)
+            right.process(new, data, ctx)
         except Exception:
             raise
         else:
@@ -166,15 +194,15 @@ class NotFollowedBy(Parser):
         super().__init__()
         self.set_children([p, f])
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         left, right = self.children
-        new, res = left.process(pos, data)
+        new, res = left.process(pos, data, ctx)
         try:
             right.process(new, data)
         except Exception:
             return new, res
         else:
-            raise Exception(f"{right} can't follow {left} at {pos}")
+            raise Exception(f"{right} can't follow {left}")
 
 
 class KeepLeft(Parser):
@@ -182,10 +210,10 @@ class KeepLeft(Parser):
         super().__init__()
         self.set_children([left, right])
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         left, right = self.children
-        pos, res = left.process(pos, data)
-        pos, _ = right.process(pos, data)
+        pos, res = left.process(pos, data, ctx)
+        pos, _ = right.process(pos, data, ctx)
         return pos, res
 
 
@@ -194,10 +222,10 @@ class KeepRight(Parser):
         super().__init__()
         self.set_children([left, right])
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         left, right = self.children
-        pos, _ = left.process(pos, data)
-        pos, res = right.process(pos, data)
+        pos, _ = left.process(pos, data, ctx)
+        pos, res = right.process(pos, data, ctx)
         return pos, res
 
 
@@ -207,9 +235,9 @@ class Opt(Parser):
         self.set_children([p])
         self.default = default
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         try:
-            return self.children[0].process(pos, data)
+            return self.children[0].process(pos, data, ctx)
         except Exception:
             return pos, self.default
 
@@ -220,8 +248,8 @@ class Map(Parser):
         self.add_child(p)
         self.func = func
 
-    def process(self, pos, data):
-        pos, res = self.children[0].process(pos, data)
+    def process(self, pos, data, ctx):
+        pos, res = self.children[0].process(pos, data, ctx)
         return pos, self.func(res)
 
     def __repr__(self):
@@ -236,10 +264,10 @@ class Lift(Parser):
     def __mul__(self, other):
         return self.add_child(other)
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         results = []
         for c in self.children:
-            pos, res = c.process(pos, data)
+            pos, res = c.process(pos, data, ctx)
             results.append(res)
         return pos, self.func(*results)
 
@@ -252,8 +280,8 @@ class Forward(Parser):
     def __le__(self, delegate):
         self.set_children([delegate])
 
-    def process(self, pos, data):
-        return self.children[0].process(pos, data)
+    def process(self, pos, data, ctx):
+        return self.children[0].process(pos, data, ctx)
 
 
 class Char(Parser):
@@ -261,10 +289,12 @@ class Char(Parser):
         super().__init__()
         self.char = char
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         if data[pos] == self.char:
             return (pos + 1, self.char)
-        raise Exception(f"Require {self.char} at {pos}.")
+        msg = f"Expected {self.char}."
+        ctx.set(pos, msg)
+        raise Exception(msg)
 
     def __repr__(self):
         return f"Char('{self.char}')"
@@ -276,11 +306,13 @@ class InSet(Parser):
         self.values = set(s)
         self.name = name
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         c = data[pos]
         if c in self.values:
             return (pos + 1, c)
-        raise Exception(f"Require {self} at {pos}.")
+        msg = f"Expected {self}."
+        ctx.set(pos, msg)
+        raise Exception()
 
 
 class Literal(Parser):
@@ -288,13 +320,15 @@ class Literal(Parser):
         super().__init__()
         self.chars = chars
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         old = pos
         for c in self.chars:
             if data[pos] == c:
                 pos += 1
             else:
-                raise Exception(f"Expected {self.chars} at pos {old}.")
+                msg = f"Expected {self.chars}."
+                ctx.set(old, msg)
+                raise Exception(msg)
         return pos, self.chars
 
 
@@ -303,8 +337,8 @@ class Keyword(Literal):
         super().__init__(chars)
         self.value = value
 
-    def process(self, pos, data):
-        pos, _ = super().process(pos, data)
+    def process(self, pos, data, ctx):
+        pos, _ = super().process(pos, data, ctx)
         return pos, self.value
 
 
@@ -314,9 +348,10 @@ class String(Parser):
         self.chars = set(chars)
         self.echars = set(echars) if echars else set()
 
-    def process(self, pos, data):
+    def process(self, pos, data, ctx):
         results = []
         p = data[pos]
+        old = pos
         while p in self.chars or p == "\\":
             if p == "\\" and data[pos + 1] in self.echars:
                 results.append(data[pos + 1])
@@ -328,7 +363,9 @@ class String(Parser):
                 break
             p = data[pos]
         if not results:
-            raise Exception(f"Expected one of {self.chars} at {pos}")
+            msg = f"Expected one of {self.chars}."
+            ctx.set(old, msg)
+            raise Exception(msg)
         return pos, "".join(results)
 
 
@@ -344,8 +381,8 @@ class EnclosedComment(Parser):
     def combine(c):
         return c[0] + "".join(c[1]) + "".join(c[2:])
 
-    def process(self, pos, data):
-        return self.children[0].process(pos, data)
+    def process(self, pos, data, ctx):
+        return self.children[0].process(pos, data, ctx)
 
 
 class OneLineComment(Parser):
@@ -362,8 +399,8 @@ class OneLineComment(Parser):
         c[1] = "".join(c[1])
         return "".join(c)
 
-    def process(self, pos, data):
-        return self.children[0].process(pos, data)
+    def process(self, pos, data, ctx):
+        return self.children[0].process(pos, data, ctx)
 
 
 def make_number(sign, int_part, frac_part):
@@ -378,15 +415,16 @@ RightBracket = Char("]")
 LeftParen = Char("(")
 RightParen = Char(")")
 Colon = Char(":")
+SemiColon = Char(";")
 Comma = Char(",")
 
-AnyChar = InSet(string.printable)
+AnyChar = InSet(string.printable) % "Any Char"
 Digit = InSet(string.digits) % "Digit"
 Digits = String(string.digits) % "Digits"
 WSChar = InSet(set(string.whitespace) - set("\n\r")) % "Whitespace"
 EOL = InSet("\n\r") % "EOL"
-WS = Many(InSet(string.whitespace))
-Number = Lift(make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)
+WS = Many(InSet(string.whitespace)) % "Whitespace"
+Number = (Lift(make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)) % "Number"
 
 SingleQuotedString = Char("'") >> String(set(string.printable) - set("'"), "'") << Char("'")
 DoubleQuotedString = Char('"') >> String(set(string.printable) - set('"'), '"') << Char('"')
