@@ -2,10 +2,10 @@
 Simple arithmetic with recursive definitions, operator precedence, and left
 associativity.
 """
-from parseit import Char, Forward, Many, Number
+from parseit import Char, Forward, LeftParen, Many, Number, RightParen
 
 
-def reduce(args):
+def op(args):
     ans, rest = args
     for op, arg in rest:
         if op == "+":
@@ -20,6 +20,6 @@ def reduce(args):
 
 
 expr = Forward()
-factor = (Number | (Char("(") >> expr << Char(")")))
-term = (factor + Many((Char("*") | Char("/")) + factor)).map(reduce)
-expr <= (term + Many((Char("+") | Char("-")) + term)).map(reduce)
+factor = (Number | (LeftParen >> expr << RightParen))
+term = (factor + Many((Char("*") | Char("/")) + factor)).map(op)
+expr <= (term + Many((Char("+") | Char("-")) + term)).map(op)

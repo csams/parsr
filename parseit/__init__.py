@@ -1,81 +1,57 @@
-"""
-parseit is a project I'm using to learn about parser combinators.
-"""
-import logging
 import string
-from parseit.tree import Node
+from io import StringIO
 
-log = logging.getLogger(__name__)
+
+class Node:
+    def __init__(self):
+        self.children = []
+
+    def add_child(self, child):
+        self.children.append(child)
+        return self
+
+    def set_children(self, children):
+        self.children.clear()
+        for c in children:
+            self.add_child(c)
+        return self
+
+    def __repr__(self):
+        return self.__class__.__name__
+
+
+def text_format(tree):
+    out = StringIO()
+    tab = " " * 2
+    seen = set()
+
+    def inner(cur, prefix):
+        print(prefix + str(cur), file=out)
+        if cur in seen:
+            return
+
+        seen.add(cur)
+
+        next_prefix = prefix + tab
+        for c in cur.children:
+            inner(c, next_prefix)
+
+    inner(tree, "")
+    out.seek(0)
+    return out.read()
+
+
+def render(tree):
+    print(text_format(tree))
 
 
 class Parser(Node):
     def __init__(self):
-        super(Parser, self).__init__()
+        super().__init__()
         self.name = None
-        self._code = None
-        self._tree = None
-
-    @property
-    def code(self):
-        if not self._code:
-            from parseit.compiler import comp
-            self._code = comp(self)
-        return self._code
-
-    @property
-    def optimized_tree(self):
-        if not self._tree:
-            from parseit.optimizer import optimize
-            self._tree = optimize(self)
-        return self._tree
-
-    def __truediv__(self, other):
-        return NotFollowedBy(self, other)
-
-    def __or__(self, other):
-        return Or(self, other)
-
-    def __lshift__(self, other):
-        return KeepLeft(self, other)
-
-    def __rshift__(self, other):
-        return KeepRight(self, other)
-
-    def __add__(self, other):
-        return Concat(self, other)
-
-    def __and__(self, other):
-        return FollowedBy(self, other)
-
-    def __mod__(self, name):
-        self.name = name
-        return self
-
-    def sep_by(self, p):
-        return SepBy(p, self)
-
-    def until(self, p):
-        pass
-
-    def between(self, other):
-        return Between(self, other)
 
     def map(self, func):
-        return Map(func, self)
-
-    def __call__(self, data):
-        return self.code(data)
-
-    def __repr__(self):
-        return self.name or super(Parser, self).__repr__()
-
-
-class SepBy(Parser):
-    def __init__(self, sep, parser):
-        super(SepBy, self).__init__()
-        parser = Lift(self.accumulate) * Opt(parser) * Many(sep >> parser)
-        parser.set_parent(self)
-        sep.set_parent(self)
+        return Map(self, func)
 
     @staticmethod
     def accumulate(first, rest):
@@ -84,243 +60,300 @@ class SepBy(Parser):
             results.extend(rest)
         return results
 
+    def sep_by(self, sep):
+        return Lift(self.accumulate) * Opt(self) * Many(sep >> self)
 
-class NotFollowedBy(Parser):
-    def __init__(self, parser, end):
-        super(NotFollowedBy, self).__init__()
-        parser.set_parent(self)
-        end.set_parent(self)
+    def __or__(self, other):
+        return Choice(self, other)
 
+    def __and__(self, other):
+        return FollowedBy(self, other)
 
-class Literal(Parser):
-    def __init__(self, chars, ignore_case=False):
-        super(Literal, self).__init__()
-        self.ignore_case = ignore_case
-        self.chars = chars if not ignore_case else chars.lower()
+    def __truediv__(self, other):
+        return NotFollowedBy(self, other)
 
+    def __add__(self, other):
+        return Seq(self, other)
 
-class Keyword(Literal):
-    def __init__(self, chars, value, ignore_case=False):
-        super(Keyword, self).__init__(chars, ignore_case=ignore_case)
-        self.value = value
+    def __lshift__(self, other):
+        return KeepLeft(self, other)
 
+    def __rshift__(self, other):
+        return KeepRight(self, other)
 
-class Binary(Parser):
-    def __init__(self, left, right):
-        super(Binary, self).__init__()
-        left.set_parent(self)
-        right.set_parent(self)
-
-
-class Concat(Binary):
-    pass
-
-
-class FollowedBy(Binary):
-    pass
-
-
-class Or(Binary):
-    pass
-
-
-class KeepLeft(Binary):
-    pass
-
-
-class KeepRight(Binary):
-    pass
-
-
-class Forward(Parser):
-    """
-    Forward declaration of a recursive non-terminal.
-
-    .. code-block:: python
-       expr = Forward()
-       term = Forward()
-
-       factor = (Number | (Char("(") >> expr << Char(")")))
-       term <= ((factor + (Char("*") | Char("/")) + term) | factor)
-       expr <= ((term + (Char("+") | Char("-")) + expr) | term)
-
-    """
-    def __init__(self):
-        super(Forward, self).__init__()
-
-    def __le__(self, other):
-        self.set_children([other])
-
-
-class Lift(Parser):
-    """
-    Parse several things in a row and then pass them to the positional
-    arguments of Lift.
-
-    .. code-block:: python
-       def f(a, b, c):
-           return a + b + c
-
-    `Lift(f) * Number * Number * Number` will parse three numbers and then
-    call f with them. The result of the entire expression is the result of f.
-
-    `*` is meant to evoke applicative functor syntax:
-    `pure(f) <*> Number <*> Number <*> Number`
-    """
-    def __init__(self, func, args=None):
-        super(Lift, self).__init__()
-        self.func = func
-        args = args or []
-        for a in args:
-            a.set_parent(self)
-
-    def __mul__(self, other):
-        other.set_parent(self)
+    def __mod__(self, name):
+        self.name = name
         return self
 
+    def __call__(self, data):
+        data = list(data)
+        data.append(None)
+        return self.process(0, data)
+
     def __repr__(self):
-        return self.name or f"Lift({self.func.__name__})"
+        return self.name or f"{self.__class__.__name__}"
 
 
 class Choice(Parser):
-    """ Optimization of nested Or nodes. """
-    def add_predicates(self, preds):
-        for p in preds:
-            p.set_parent(self)
-        return self
+    def __init__(self, left, right):
+        super().__init__()
+        self.set_children([left, right])
+
+    def __or__(self, other):
+        return self.add_child(other)
+
+    def process(self, pos, data):
+        ex = None
+        for c in self.children:
+            try:
+                return c.process(pos, data)
+            except Exception as e:
+                ex = e
+        raise ex
+
+
+class Seq(Parser):
+    def __init__(self, left, right):
+        super().__init__()
+        self.set_children([left, right])
+
+    def __add__(self, other):
+        return self.add_child(other)
+
+    def process(self, pos, data):
+        results = []
+        for p in self.children:
+            pos, res = p.process(pos, data)
+            results.append(res)
+        return pos, results
 
 
 class Many(Parser):
-    def __init__(self, parser):
-        super(Many, self).__init__()
-        parser.set_parent(self)
+    def __init__(self, p):
+        super().__init__()
+        self.add_child(p)
+
+    def process(self, pos, data):
+        results = []
+        p = self.children[0]
+        while True:
+            try:
+                pos, res = p.process(pos, data)
+                results.append(res)
+            except Exception:
+                break
+        return pos, results
 
 
-class Many1(Many):
-    pass
+class FollowedBy(Parser):
+    def __init__(self, p, f):
+        super().__init__()
+        self.set_children([p, f])
+
+    def process(self, pos, data):
+        left, right = self.children
+        new, res = left.process(pos, data)
+        try:
+            right.process(new, data)
+        except Exception:
+            raise
+        else:
+            return new, res
 
 
-class OrUntil(Parser):
-    pass
+class NotFollowedBy(Parser):
+    def __init__(self, p, f):
+        super().__init__()
+        self.set_children([p, f])
+
+    def process(self, pos, data):
+        left, right = self.children
+        new, res = left.process(pos, data)
+        try:
+            right.process(new, data)
+        except Exception:
+            return new, res
+        else:
+            raise Exception(f"{right} can't follow {left} at {pos}")
+
+
+class KeepLeft(Parser):
+    def __init__(self, left, right):
+        super().__init__()
+        self.set_children([left, right])
+
+    def process(self, pos, data):
+        left, right = self.children
+        pos, res = left.process(pos, data)
+        pos, _ = right.process(pos, data)
+        return pos, res
+
+
+class KeepRight(Parser):
+    def __init__(self, left, right):
+        super().__init__()
+        self.set_children([left, right])
+
+    def process(self, pos, data):
+        left, right = self.children
+        pos, _ = left.process(pos, data)
+        pos, res = right.process(pos, data)
+        return pos, res
 
 
 class Opt(Parser):
-    def __init__(self, parser, default=None):
-        super(Opt, self).__init__()
-        parser.set_parent(self)
+    def __init__(self, p, default=None):
+        super().__init__()
+        self.set_children([p])
         self.default = default
 
-
-class Between(Parser):
-    def __init__(self, parser, envelope):
-        super(Between, self).__init__()
-        parser = (envelope >> parser << envelope)
-        parser.set_parent(self)
+    def process(self, pos, data):
+        try:
+            return self.children[0].process(pos, data)
+        except Exception:
+            return pos, self.default
 
 
 class Map(Parser):
-    def __init__(self, func, parser):
-        super(Map, self).__init__()
+    def __init__(self, p, func):
+        super().__init__()
+        self.add_child(p)
         self.func = func
-        parser.set_parent(self)
+
+    def process(self, pos, data):
+        pos, res = self.children[0].process(pos, data)
+        return pos, self.func(res)
 
     def __repr__(self):
-        return self.name or f"Map({self.func.__name__})"
+        return f"Map({self.func})"
+
+
+class Lift(Parser):
+    def __init__(self, func):
+        super().__init__()
+        self.func = func
+
+    def __mul__(self, other):
+        return self.add_child(other)
+
+    def process(self, pos, data):
+        results = []
+        for c in self.children:
+            pos, res = c.process(pos, data)
+            results.append(res)
+        return pos, self.func(*results)
+
+
+class Forward(Parser):
+    def __init__(self):
+        super().__init__()
+        self.delegate = None
+
+    def __le__(self, delegate):
+        self.set_children([delegate])
+
+    def process(self, pos, data):
+        return self.children[0].process(pos, data)
 
 
 class Char(Parser):
-    def __init__(self, c, ignore_case=False):
-        super(Char, self).__init__()
-        self.ignore_case = ignore_case
-        self.c = c if not ignore_case else c.lower()
+    def __init__(self, char):
+        super().__init__()
+        self.char = char
+
+    def process(self, pos, data):
+        if data[pos] == self.char:
+            return (pos + 1, self.char)
+        raise Exception(f"Require {self.char} at {pos}.")
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.c})"
-
-
-class EscapedChar(Char):
-    pass
+        return f"Char('{self.char}')"
 
 
 class InSet(Parser):
-    def __init__(self, values, label):
-        super(InSet, self).__init__()
-        self.cache = set(values)
-        self.name = label
-        self.label = label
+    def __init__(self, s, name=None):
+        super().__init__()
+        self.values = set(s)
+        self.name = name
 
-    def __repr__(self):
-        return f"InSet({self.name})"
-
-
-class StringBuilder(Parser):
-    def __init__(self, anyChar=None, lower=0):
-        super(StringBuilder, self).__init__()
-        self.lower = lower
-        self.cache = anyChar.cache if anyChar else set()
-        self.echars = anyChar.echars if anyChar else set()
-
-    def add_cache(self, cache):
-        self.cache |= cache
-
-    def add_echars(self, echars):
-        self.echars |= echars
-
-    def add_echar(self, echar):
-        self.echars.add(echar)
+    def process(self, pos, data):
+        c = data[pos]
+        if c in self.values:
+            return (pos + 1, c)
+        raise Exception(f"Require {self} at {pos}.")
 
 
-class AnyChar(Parser):
-    def __init__(self):
-        super(AnyChar, self).__init__()
-        self.cache = set()
-        self.echars = set()
+class Literal(Parser):
+    def __init__(self, chars):
+        super().__init__()
+        self.chars = chars
 
-    def add_anychar(self, ac):
-        self.cache |= ac.cache
-        self.echars |= ac.echars
-        return self
+    def process(self, pos, data):
+        old = pos
+        for c in self.chars:
+            if data[pos] == c:
+                pos += 1
+            else:
+                raise Exception(f"Expected {self.chars} at pos {old}.")
+        return pos, self.chars
 
-    def add_char(self, char):
-        self.cache.add(char.c)
-        return self
 
-    def add_inset(self, s):
-        self.cache |= s.cache
+class Keyword(Literal):
+    def __init__(self, chars, value):
+        super().__init__(chars)
+        self.value = value
 
-    def add_echar(self, echar):
-        self.echars.add(echar.c)
+    def process(self, pos, data):
+        pos, _ = super().process(pos, data)
+        return pos, self.value
 
-    def __add__(self, other):
-        res = AnyChar()
-        res.cache = self.cache | other.cache
-        res.echars = self.echars | other.echars
-        res.name = " | ".join([self.name, other.name]) if self.name else other.name
-        return res
 
-    def __repr__(self):
-        return f"AnyChar({self.name})"
+class String(Parser):
+    def __init__(self, chars, echars=None):
+        super().__init__()
+        self.chars = set(chars)
+        self.echars = set(echars) if echars else set()
+
+    def process(self, pos, data):
+        results = []
+        p = data[pos]
+        while p in self.chars or p == "\\":
+            if p == "\\" and data[pos + 1] in self.echars:
+                results.append(data[pos + 1])
+                pos += 2
+            elif p in self.chars:
+                results.append(p)
+                pos += 1
+            else:
+                break
+            p = data[pos]
+        if not results:
+            raise Exception(f"Expected one of {self.chars} at {pos}")
+        return pos, "".join(results)
 
 
 class EnclosedComment(Parser):
     def __init__(self, s, e):
-        super(EnclosedComment, self).__init__()
+        super().__init__()
         Start = Literal(s)
         End = Literal(e)
-        p = (Start + Many(OneChar / End) + OneChar + End).map(self.combine)
-        p.set_parent(self)
+        p = (Start + Many(AnyChar / End) + AnyChar + End).map(self.combine)
+        self.add_child(p)
 
     @staticmethod
     def combine(c):
         return c[0] + "".join(c[1]) + "".join(c[2:])
 
+    def process(self, pos, data):
+        return self.children[0].process(pos, data)
+
 
 class OneLineComment(Parser):
     def __init__(self, s):
-        super(OneLineComment, self).__init__()
+        super().__init__()
         Start = Literal(s)
-        parser = ((Start + Many(OneChar / EOL) + OneChar + EOL) | (Start + EOL)).map(self.combine)
-        parser.set_parent(self)
+        p = ((Start + Many(AnyChar / EOL) + AnyChar + EOL) | (Start + EOL)).map(self.combine)
+        self.add_child(p)
 
     @staticmethod
     def combine(c):
@@ -329,34 +362,15 @@ class OneLineComment(Parser):
         c[1] = "".join(c[1])
         return "".join(c)
 
-
-def make_string(results):
-    if isinstance(results, list):
-        return "".join(results)
-    return results
+    def process(self, pos, data):
+        return self.children[0].process(pos, data)
 
 
-def make_number(sign, int_part, dec_part):
-    if dec_part:
-        res = ".".join([int_part, dec_part[1]])
-    else:
-        res = int_part
-    res = float(res) if "." in res else int(res)
-    return -res if sign else res
+def make_number(sign, int_part, frac_part):
+    tmp = sign + int_part + ("".join(frac_part) if frac_part else "")
+    return float(tmp) if "." in tmp else int(tmp)
 
 
-_punc_set = set(string.punctuation)
-Digit = InSet(string.digits, "digit")
-NonZeroDigit = InSet(set(string.digits) - set(["0"]), "Non zero digit")
-Letter = InSet(string.ascii_letters, "letter")
-NonSingleQuotePunctuation = InSet(_punc_set - set("'\\"), "non single quote punctuation character")
-NonDoubleQuotePunctuation = InSet(_punc_set - set("\"\\"), "non double quote punctuation character")
-Punctuation = InSet(_punc_set, "punctuation character")
-Printable = InSet(string.printable, "printable character")
-OneChar = Printable
-Whitespace = InSet(set(string.whitespace) - set("\n\r"), "whitespace except newlines")
-EOL = InSet("\n\r", "newline")
-AllWhitespace = (Whitespace | EOL)
 LeftCurly = Char("{")
 RightCurly = Char("}")
 LeftBracket = Char("[")
@@ -365,13 +379,15 @@ LeftParen = Char("(")
 RightParen = Char(")")
 Colon = Char(":")
 Comma = Char(",")
-DoubleQuote = Char("\"")
-EscapedDoubleQuote = EscapedChar('"')
-SingleQuote = Char("'")
-EscapedSingleQuote = EscapedChar("'")
-Backslash = Char("\\")
-String = Many(Letter | Digit | Punctuation | Whitespace) % "String"
-DoubleQuoteString = Many(Letter | Digit | Whitespace | NonDoubleQuotePunctuation | EscapedDoubleQuote | Backslash) % "Double Quoted String"
-SingleQuoteString = Many(Letter | Digit | Whitespace | NonSingleQuotePunctuation | EscapedSingleQuote | Backslash) % "Single Quoted String"
-QuotedString = ((DoubleQuoteString.between(DoubleQuote) | SingleQuoteString.between(SingleQuote))) % "QuotedString"
-Number = (Lift(make_number) * Opt(Char("-")) * Many1(Digit) * (Opt(Char(".") + Many(Digit)))) % "Number"
+
+AnyChar = InSet(string.printable)
+Digit = InSet(string.digits) % "Digit"
+Digits = String(string.digits) % "Digits"
+WSChar = InSet(set(string.whitespace) - set("\n\r")) % "Whitespace"
+EOL = InSet("\n\r") % "EOL"
+WS = Many(InSet(string.whitespace))
+Number = Lift(make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)
+
+SingleQuotedString = Char("'") >> String(set(string.printable) - set("'"), "'") << Char("'")
+DoubleQuotedString = Char('"') >> String(set(string.printable) - set('"'), '"') << Char('"')
+QuotedString = (DoubleQuotedString | SingleQuotedString) % "Quoted String"

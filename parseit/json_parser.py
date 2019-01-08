@@ -2,21 +2,19 @@
 This module handles primitive json parsing. It doesn't handle unicode or
 numbers in scientific notation.
 """
-from parseit import (AllWhitespace,
-                     Colon,
+from parseit import (Colon,
                      Comma,
                      Forward,
                      Keyword,
                      LeftBracket,
                      LeftCurly,
-                     Many,
                      Number,
                      RightBracket,
                      RightCurly,
-                     QuotedString)
+                     QuotedString,
+                     WS)
 
 
-WS = Many(AllWhitespace)
 JsonArray = Forward() % "Json Array"
 JsonObject = Forward() % "Json Object"
 TRUE = Keyword("true", True) % "TRUE"
@@ -26,14 +24,12 @@ SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | N
 JsonValue = (WS >> SimpleValue << WS) % "Json Value"
 Key = (QuotedString << Colon) % "Key"
 KVPairs = (((WS >> Key) + JsonValue).sep_by(Comma)) % "KVPairs"
-JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
 JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Array"
+JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
 
 
 def loads(data):
-    status, res, pos = JsonValue(data)
-    if not status:
-        raise Exception(res)
+    _, res = JsonValue(data)
     return res
 
 
@@ -52,6 +48,7 @@ if __name__ == "__main__":
         else:
             with open(sys.argv[1]) as f:
                 data = f.read()
+        loads(data)
         pprint(loads(data))
     else:
         print("Pass a file.")

@@ -7,10 +7,10 @@ interpreted to parse input.
 A parser that handles simple arithmetic.
 
 ```python
-from parseit import Char, Forward, Many, Number
+from parseit import Char, Forward, LeftParen, Many, Number, RightParen
 
 
-def reduce(args):
+def op(args):
     ans, rest = args
     for op, arg in rest:
         if op == "+":
@@ -25,9 +25,9 @@ def reduce(args):
 
 
 expr = Forward()
-factor = (Number | (Char("(") >> expr << Char(")")))
-term = (factor + Many((Char("*") | Char("/")) + factor)).map(reduce)
-expr <= (term + Many((Char("+") | Char("-")) + term)).map(reduce)
+factor = (Number | (LeftParen >> expr << RightParen))
+term = (factor + Many((Char("*") | Char("/")) + factor)).map(op)
+expr <= (term + Many((Char("+") | Char("-")) + term)).map(op)
 ```
 
 ```
@@ -39,32 +39,30 @@ Out[2]: 8.666666666666668
 
 ## Simple json
 ```python
-from parseit import (AllWhitespace,
-                     Colon,
+from parseit import (Colon,
                      Comma,
                      Forward,
                      Keyword,
                      LeftBracket,
                      LeftCurly,
-                     Many,
                      Number,
                      RightBracket,
                      RightCurly,
-                     QuotedString)
+                     QuotedString,
+                     WS)
 
 
-WS = Many(AllWhitespace)
-JsonArray = Forward()
-JsonObject = Forward()
-TRUE = Keyword("true", True)
-FALSE = Keyword("false", False)
-NULL = Keyword("null", None)
-SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL)
-JsonValue = (WS >> SimpleValue << WS)
-Key = (QuotedString << Colon)
-KVPairs = (((WS >> Key) + JsonValue).sep_by(Comma))
-JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly)
-JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket)
+JsonArray = Forward() % "Json Array"
+JsonObject = Forward() % "Json Object"
+TRUE = Keyword("true", True) % "TRUE"
+FALSE = Keyword("false", False) % "FALSE"
+NULL = Keyword("null", None) % "NULL"
+SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL) % "SimpleValue"
+JsonValue = (WS >> SimpleValue << WS) % "Json Value"
+Key = (QuotedString << Colon) % "Key"
+KVPairs = (((WS >> Key) + JsonValue).sep_by(Comma)) % "KVPairs"
+JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Array"
+JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
 ```
 
 ```

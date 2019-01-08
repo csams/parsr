@@ -1,23 +1,22 @@
-from parseit.compiler import comp
 from parseit import Colon, QuotedString
 
 
 def test_keepleft():
-    key = comp(QuotedString << Colon)
+    key = QuotedString << Colon
     assert key('"key":')[1] == "key"
 
-    key = comp(Colon << QuotedString)
+    key = Colon << QuotedString
     assert key(':"key"')[1] == ":"
 
 
 def test_keepright():
-    key = comp(QuotedString >> Colon)
+    key = QuotedString >> Colon
     assert key('"key":')[1] == ":"
 
-    key = comp(Colon >> QuotedString)
+    key = Colon >> QuotedString
     assert key(':"key"')[1] == "key"
 
 
 def test_middle():
-    key = comp(Colon >> QuotedString << Colon)
+    key = Colon >> QuotedString << Colon
     assert key(':"key":')[1] == "key"
