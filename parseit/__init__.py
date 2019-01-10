@@ -50,6 +50,7 @@ class Ctx:
     def __init__(self, lines):
         self.error_pos = -1
         self.error_msg = None
+        self.indents = []
         self.lines = [i for i, x in enumerate(lines) if x == "\n"]
 
     def set(self, pos, msg):
@@ -64,7 +65,7 @@ class Ctx:
         p = self.line(pos)
         if p == 0:
             return pos
-        return pos - self.lines[p - 1]
+        return (pos - self.lines[p - 1] - 1)
 
 
 class Parser(Node):
@@ -112,7 +113,8 @@ class Parser(Node):
         data.append(None)  # add a terminal so we don't overrun
         ctx = Ctx(data)
         try:
-            return self.process(0, data, ctx)
+            _, ret = self.process(0, data, ctx)
+            return ret
         except Exception:
             lineno = ctx.line(ctx.error_pos)
             colno = ctx.col(ctx.error_pos)
@@ -180,7 +182,7 @@ class FollowedBy(Parser):
 
     def process(self, pos, data, ctx):
         left, right = self.children
-        new, res = left.process(pos, data)
+        new, res = left.process(pos, data, ctx)
         try:
             right.process(new, data, ctx)
         except Exception:
@@ -198,7 +200,7 @@ class NotFollowedBy(Parser):
         left, right = self.children
         new, res = left.process(pos, data, ctx)
         try:
-            right.process(new, data)
+            right.process(new, data, ctx)
         except Exception:
             return new, res
         else:
@@ -282,6 +284,34 @@ class Forward(Parser):
 
     def process(self, pos, data, ctx):
         return self.children[0].process(pos, data, ctx)
+
+
+class WithIndent(Parser):
+    def __init__(self, p):
+        super().__init__()
+        self.parser = p
+
+    def process(self, pos, data, ctx):
+        new, _ = WS.process(pos, data, ctx)
+        try:
+            ctx.indents.append(ctx.col(new))
+            return self.parser.process(new, data, ctx)
+        finally:
+            ctx.indents.pop()
+
+
+class Nothing(Parser):
+    def process(self, pos, data, ctx):
+        return pos, None
+
+
+class EOF(Parser):
+    def process(self, pos, data, ctx):
+        if data[pos] is None:
+            return pos, None
+        msg = "Expected end of input."
+        ctx.set(pos, msg)
+        raise Exception(msg)
 
 
 class Char(Parser):
@@ -389,11 +419,13 @@ class OneLineComment(Parser):
     def __init__(self, s):
         super().__init__()
         Start = Literal(s)
-        p = ((Start + Many(AnyChar / EOL) + AnyChar + EOL) | (Start + EOL)).map(self.combine)
+        End = EOL | EOF
+        p = ((Start + Many(AnyChar / End) + Opt(AnyChar) + End) | (Start + End)).map(self.combine)
         self.add_child(p)
 
     @staticmethod
     def combine(c):
+        c = [i for i in c if i]
         if len(c) == 2:
             return "".join(c)
         c[1] = "".join(c[1])
@@ -407,6 +439,9 @@ def make_number(sign, int_part, frac_part):
     tmp = sign + int_part + ("".join(frac_part) if frac_part else "")
     return float(tmp) if "." in tmp else int(tmp)
 
+
+Nothing = Nothing()
+EOF = EOF()
 
 LeftCurly = Char("{")
 RightCurly = Char("}")

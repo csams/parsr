@@ -2,16 +2,8 @@
 This module handles primitive json parsing. It doesn't handle unicode or
 numbers in scientific notation.
 """
-from parseit import (Colon,
-                     Comma,
-                     Forward,
-                     Keyword,
-                     LeftBracket,
-                     LeftCurly,
-                     Number,
-                     RightBracket,
-                     RightCurly,
-                     QuotedString,
+from parseit import (Colon, Comma, EOF, Forward, Keyword, LeftBracket,
+                     LeftCurly, Number, RightBracket, RightCurly, QuotedString,
                      WS)
 
 
@@ -27,10 +19,11 @@ KVPairs = (((WS >> Key) + JsonValue).sep_by(Comma)) % "KVPairs"
 JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Array"
 JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
 
+Top = JsonValue + EOF
+
 
 def loads(data):
-    _, res = JsonValue(data)
-    return res
+    return Top(data)[0]
 
 
 def load(f):
