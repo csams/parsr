@@ -1,9 +1,21 @@
+"""
+parseit is a small library for parsing simple, context free grammars or
+grammars requiring knowledge of indentation.
+
+The design is top down recursive decent with backtracking. Fancy optimizations
+like packrat are not implemented since the goal is a library under 500 lines
+that's still sufficient for describing small, non-standard configuration files.
+If some file is yaml, xml, or json, just use the standard parsers.
+"""
 import string
 from bisect import bisect_left
 from io import StringIO
 
 
 class Node:
+    """
+    Node is a simple tree structure that helps with rendering grammars.
+    """
     def __init__(self):
         self.children = []
 
@@ -22,6 +34,7 @@ class Node:
 
 
 def text_format(tree):
+    """ Formats a tree with indentation. """
     out = StringIO()
     tab = " " * 2
     seen = set()
@@ -43,6 +56,7 @@ def text_format(tree):
 
 
 def render(tree):
+    """ Helper that prints a tree with indentation. """
     print(text_format(tree))
 
 
@@ -442,6 +456,7 @@ def make_number(sign, int_part, frac_part):
 
 Nothing = Nothing()
 EOF = EOF()
+EOL = InSet("\n\r") % "EOL"
 
 LeftCurly = Char("{")
 RightCurly = Char("}")
@@ -457,7 +472,6 @@ AnyChar = InSet(string.printable) % "Any Char"
 Digit = InSet(string.digits) % "Digit"
 Digits = String(string.digits) % "Digits"
 WSChar = InSet(set(string.whitespace) - set("\n\r")) % "Whitespace"
-EOL = InSet("\n\r") % "EOL"
 WS = Many(InSet(string.whitespace)) % "Whitespace"
 Number = (Lift(make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)) % "Number"
 

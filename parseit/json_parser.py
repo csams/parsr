@@ -1,5 +1,5 @@
 """
-This module handles primitive json parsing. It doesn't handle unicode or
+json_parser handles primitive json parsing. It doesn't handle unicode or
 numbers in scientific notation.
 """
 from parseit import (Colon, Comma, EOF, Forward, Keyword, LeftBracket,

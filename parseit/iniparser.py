@@ -1,3 +1,10 @@
+"""
+iniparser parses ini files into a python dictionary of dictionaries. Duplicate
+keys in a section convert the value to a list. Numbers are automatically
+converted to python ints or floats. Line continuations based on hanging indents
+are supported. Sections inherit keys from the [defaults] section. Variable
+interpolation is not supported.
+"""
 import string
 from parseit import (Char, EOF, EOL, LeftBracket, Many, Number, OneLineComment,
                      Opt, Parser, RightBracket, String, WithIndent, WS)

@@ -23,5 +23,4 @@ expr = Forward()
 factor = (Number | (LeftParen >> expr << RightParen))
 term = (factor + Many((Char("*") | Char("/")) + factor)).map(op)
 expr <= (term + Many((Char("+") | Char("-")) + term)).map(op)
-
 Top = expr + EOF
