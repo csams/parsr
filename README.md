@@ -1,11 +1,12 @@
 # parseit
-parseit is a small library for parsing simple, context free grammars or
-grammars requiring knowledge of indentation.
+parseit is a little library for parsing simple, mostly context free grammars
+that might require knowledge of indentation.
 
-The design is top down recursive decent with backtracking. Fancy optimizations
-like packrat are not implemented since the goal is a library under 500 lines
-that's still sufficient for describing small, non-standard configuration files.
-Just use standard parsers for things like xml or yaml.
+The design is top down recursive decent with backtracking. Fancy tricks like
+rewriting left recursions and optimizations like
+[packrat](https://pdos.csail.mit.edu/~baford/packrat/thesis/thesis.pdf) are not
+implemented since the goal is a library under 500 lines that's still sufficient
+for parsing small, non-standard configuration files.
 
 ## Primitives
 The building blocks for matching individual characters, sets of characters, and
@@ -73,13 +74,14 @@ val = Number("-12.4")  # returns -12.4
 ```
 
 parseit also provides SingleQuotedString, DoubleQuotedString, QuotedString, EOL,
-EOF, WS, AnyChar, Nothing, and several other primitives. See parseit/__init__.py
+EOF, WS, AnyChar, Nothing, and several other primitives. See
+[parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py#L457)
 
 ## Combinators
 parseit provides several ways of combining primitives and their combinations.
 
 ### Sequencing
-Require expressions to be in an order.
+Require expressions to be in order.
 ```python
 a = Char("a")     # parses a single "a"
 b = Char("b")     # parses a single "b"
@@ -246,5 +248,6 @@ This is the "context sensitive" part of the library. The `WithIndent` class
 wraps a parser and provides it and all of its subparsers with context about
 indentation of the first encountered line. If the WithIndent instance is used in
 a recursive definition, the stack of indents is maintained and made available to
-all active parsers participating in the recursion. Refer to
-parseit/iniparser.py for an example.
+all active parsers participating in the recursion. See the
+[iniparser](https://github.com/csams/parseit/blob/master/parseit/iniparser.py)
+for an example.
