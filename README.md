@@ -57,7 +57,7 @@ Match a literal string but return a python value for it instead of the string
 itself.
 ```python
 t = Keyword("true", True)
-f = Keyword("true", True)
+f = Keyword("false", False)
 val = t("true")  # returns the boolean True
 val = f("false") # returns the boolean False
 ```
