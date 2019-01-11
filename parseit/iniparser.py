@@ -3,7 +3,7 @@ from parseit import (Char, EOF, EOL, LeftBracket, Many, Number, OneLineComment,
                      Opt, Parser, RightBracket, String, WithIndent, WS)
 
 
-class StringWithContinuation(Parser):
+class HangingString(Parser):
     def __init__(self, chars):
         super().__init__()
         self.add_child(String(chars) << (EOL | EOF))
@@ -27,6 +27,20 @@ class StringWithContinuation(Parser):
         return pos, ret
 
 
+def to_dict(x):
+    x = dict([i for i in x if i is not None])
+    d = {}
+    for k, v in x.items():
+        k = k.lower()
+        if k in d:
+            if not isinstance(d[k], list):
+                d[k] = [d[k]]
+            d[k].append(v)
+        else:
+            d[k] = v
+    return d
+
+
 header_chars = (set(string.printable) - set(string.whitespace) - set("[]"))
 key_chars = header_chars - set("=:")
 value_chars = set(string.printable) - set("\n\r")
@@ -38,17 +52,27 @@ RightEnd = (WS + RightBracket + WS)
 Header = LeftEnd >> String(header_chars) << RightEnd
 Key = WS >> String(key_chars) << WS
 Sep = Char("=") | Char(":")
-Value = WS >> ((Number << LineEnd) | StringWithContinuation(value_chars))
-KVPair = WithIndent(Key + Opt(Sep + Value, [None, None])).map(lambda a: (a[0], a[1][1]))
+Value = WS >> ((Number << LineEnd) | HangingString(value_chars))
+KVPair = WithIndent(Key + Opt(Sep + Value, default=[None, None])).map(lambda a: (a[0], a[1][1]))
 Comment = (WS >> (OneLineComment("#") | OneLineComment(";")).map(lambda x: None))
 Line = Comment | KVPair
-Section = Header + (Many(Line).map(lambda x: dict(filter(None, x))))
-Doc = Many(Comment | Section).map(lambda x: dict(filter(None, x)))
+Section = Header + (Many(Line).map(to_dict))
+Doc = Many(Comment | Section).map(to_dict)
 Top = Doc + EOF
 
 
 def loads(s):
-    return Top(s)[0]
+    res = Top(s)[0]
+    default = res.get("default")
+    if default:
+        default_keys = set(default)
+        for header, items in res.items():
+            if header != "default":
+                missing = default_keys - set(items)
+                for m in missing:
+                    items[m] = default[m]
+
+    return res
 
 
 def load(f):

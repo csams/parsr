@@ -116,8 +116,8 @@ class Parser(Node):
             _, ret = self.process(0, data, ctx)
             return ret
         except Exception:
-            lineno = ctx.line(ctx.error_pos)
-            colno = ctx.col(ctx.error_pos)
+            lineno = ctx.line(ctx.error_pos) + 1
+            colno = ctx.col(ctx.error_pos) + 1
             raise Exception(f"At line {lineno} column {colno}: {ctx.error_msg}")
 
     def __repr__(self):
