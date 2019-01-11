@@ -77,73 +77,72 @@ DATA2 = """
 
 
 def test_true():
-    assert TRUE("true")[1] is True
+    assert TRUE("true") is True
 
 
 def test_false():
-    assert FALSE("false")[1] is False
+    assert FALSE("false") is False
 
 
 def test_null():
-    assert NULL("null")[1] is None
+    assert NULL("null") is None
 
 
 def test_json_value_number():
-    assert JsonValue("123")[1] == 123
+    assert JsonValue("123") == 123
 
 
 def test_json_value_string():
-    assert JsonValue('"key"')[1] == "key"
+    assert JsonValue('"key"') == "key"
 
 
 def test_json_empty_array():
-    assert JsonArray("[]")[1] == []
+    assert JsonArray("[]") == []
 
 
 def test_json_single_element_array():
-    assert JsonArray("['key']")[1] == ["key"]
+    assert JsonArray("['key']") == ["key"]
 
 
 def test_json_multi_element_array():
-    assert JsonArray("[1, 2, 3]")[1] == [1, 2, 3]
-    assert JsonArray("['key', -3.4, 'thing']")[1] == ["key", -3.4, "thing"]
+    assert JsonArray("[1, 2, 3]") == [1, 2, 3]
+    assert JsonArray("['key', -3.4, 'thing']") == ["key", -3.4, "thing"]
 
 
 def test_json_nested_array():
-    assert JsonArray("[1, [4, 5], 3]")[1] == [1, [4, 5], 3]
-
-    assert JsonArray("['key', [-3.4], 'thing']")[1] == ["key", [-3.4], "thing"]
+    assert JsonArray("[1, [4, 5], 3]") == [1, [4, 5], 3]
+    assert JsonArray("['key', [-3.4], 'thing']") == ["key", [-3.4], "thing"]
 
 
 def test_json_empty_object():
-    assert JsonObject("{}")[1] == {}
+    assert JsonObject("{}") == {}
 
 
 def test_json_single_object():
-    assert JsonObject('{"key": "value"}')[1] == {"key": "value"}
+    assert JsonObject('{"key": "value"}') == {"key": "value"}
 
 
 def test_json_multi_object():
     expected = {"key1": "value1", "key2": 15}
-    assert JsonObject('{"key1": "value1", "key2": 15}')[1] == expected
+    assert JsonObject('{"key1": "value1", "key2": 15}') == expected
 
 
 def test_json_nested_object():
     text = '{ "key1": ["value1", "value2"], "key2": {"num": 15, "num2": 17 }}'
     expected = {"key1": ["value1", "value2"], "key2": {"num": 15, "num2": 17}}
-    assert JsonObject(text)[1] == expected
+    assert JsonObject(text) == expected
 
 
 def test_data0():
     expected = json.loads(DATA0)
-    assert JsonValue(DATA0)[1] == expected
+    assert JsonValue(DATA0) == expected
 
 
 def test_data1():
     expected = json.loads(DATA1)
-    assert JsonValue(DATA1)[1] == expected
+    assert JsonValue(DATA1) == expected
 
 
 def test_data2():
     expected = json.loads(DATA2)
-    assert JsonValue(DATA2)[1] == expected
+    assert JsonValue(DATA2) == expected

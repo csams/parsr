@@ -1,22 +1,12 @@
 """
-This module handles primitive json parsing. It doesn't handle unicode or
+json_parser handles primitive json parsing. It doesn't handle unicode or
 numbers in scientific notation.
 """
-from parseit import (AllWhitespace,
-                     Colon,
-                     Comma,
-                     Forward,
-                     Keyword,
-                     LeftBracket,
-                     LeftCurly,
-                     Many,
-                     Number,
-                     RightBracket,
-                     RightCurly,
-                     QuotedString)
+from parseit import (Colon, Comma, EOF, Forward, Keyword, LeftBracket,
+                     LeftCurly, Number, RightBracket, RightCurly, QuotedString,
+                     WS)
 
 
-WS = Many(AllWhitespace)
 JsonArray = Forward() % "Json Array"
 JsonObject = Forward() % "Json Object"
 TRUE = Keyword("true", True) % "TRUE"
@@ -26,15 +16,14 @@ SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | N
 JsonValue = (WS >> SimpleValue << WS) % "Json Value"
 Key = (QuotedString << Colon) % "Key"
 KVPairs = (((WS >> Key) + JsonValue).sep_by(Comma)) % "KVPairs"
-JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
 JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Array"
+JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
+
+Top = JsonValue + EOF
 
 
 def loads(data):
-    status, res, pos = JsonValue(data)
-    if not status:
-        raise Exception(res)
-    return res
+    return Top(data)[0]
 
 
 def load(f):
@@ -52,6 +41,7 @@ if __name__ == "__main__":
         else:
             with open(sys.argv[1]) as f:
                 data = f.read()
+        loads(data)
         pprint(loads(data))
     else:
         print("Pass a file.")
