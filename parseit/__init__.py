@@ -360,25 +360,38 @@ class InSet(Parser):
 
 
 class Literal(Parser):
-    def __init__(self, chars):
+    def __init__(self, chars, ignore_case=False):
         super().__init__()
-        self.chars = chars
+        self.chars = chars if not ignore_case else chars.lower()
+        self.ignore_case = ignore_case
 
     def process(self, pos, data, ctx):
         old = pos
-        for c in self.chars:
-            if data[pos] == c:
-                pos += 1
-            else:
-                msg = f"Expected {self.chars}."
-                ctx.set(old, msg)
-                raise Exception(msg)
-        return pos, self.chars
+        if not self.ignore_case:
+            for c in self.chars:
+                if data[pos] == c:
+                    pos += 1
+                else:
+                    msg = f"Expected {self.chars}."
+                    ctx.set(old, msg)
+                    raise Exception(msg)
+            return pos, self.chars
+        else:
+            result = []
+            for c in self.chars:
+                if data[pos].lower() == c:
+                    result.append(data[pos])
+                    pos += 1
+                else:
+                    msg = f"Expected case insensitive {self.chars}."
+                    ctx.set(old, msg)
+                    raise Exception(msg)
+            return pos, "".join(result)
 
 
 class Keyword(Literal):
-    def __init__(self, chars, value):
-        super().__init__(chars)
+    def __init__(self, chars, value, ignore_case=False):
+        super().__init__(chars, ignore_case=ignore_case)
         self.value = value
 
     def process(self, pos, data, ctx):

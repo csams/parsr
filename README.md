@@ -2,15 +2,16 @@
 parseit is a little library for parsing simple, mostly context free grammars
 that might require knowledge of indentation.
 
-The design is top down recursive decent with backtracking. Fancy tricks like
-rewriting left recursions and optimizations like
+The design is recursive decent with backtracking. Fancy tricks like rewriting
+left recursions and optimizations like
 [packrat](https://pdos.csail.mit.edu/~baford/packrat/thesis/thesis.pdf) are not
 implemented since the goal is a library under 500 lines that's still sufficient
 for parsing small, non-standard configuration files.
 
 ## Primitives
-The building blocks for matching individual characters, sets of characters, and
-a few convenient objects like numbers. All matching is case sensitive.
+These are the building blocks for matching individual characters, sets of
+characters, and a few convenient objects like numbers. All matching is case
+sensitive except for the `ignore_case` option with `Literal` and `Keyword`.
 
 ### Char
 Match a single character.
@@ -36,11 +37,11 @@ val = vowel("y")  # raises an exception
 Match zero or more characters in a set. Matching is greedy.
 ```python
 vowels = String("aeiou")
-val = vowels("a")
-val = vowels("u")
-val = vowels("aaeiouuoui")
-val = vowels("uoiea")
-val = vowels("oouieaaea")
+val = vowels("a")            # returns "a"
+val = vowels("u")            # returns "u"
+val = vowels("aaeiouuoui")   # returns "aaeiouuoui"
+val = vowels("uoiea")        # returns "uoiea"
+val = vowels("oouieaaea")    # returns "oouieaaea"
 val = vowels("ga") # raises an exception
 ```
 
@@ -48,9 +49,14 @@ val = vowels("ga") # raises an exception
 Match a literal string.
 ```python
 lit = Literal("true")
-val = lit("true")
+val = lit("true")  # returns "true"
 val = lit("True")  # raises an exception
-val = lit("anything else") # raises an exception
+val = lit("one")   # raises an exception
+
+lit = Literal("true", ignore_case=True)
+val = lit("true")  # returns "true"
+val = lit("TRUE")  # returns "TRUE"
+val = lit("one")   # raises an exception
 ```
 
 ### Keyword
@@ -60,7 +66,18 @@ itself.
 t = Keyword("true", True)
 f = Keyword("false", False)
 val = t("true")  # returns the boolean True
+val = t("True")  # raises an exception
+
 val = f("false") # returns the boolean False
+val = f("False") # raises and exception
+
+t = Keyword("true", True, ignore_case=True)
+f = Keyword("false", False, ignore_case=True)
+val = t("true")  # returns the boolean True
+val = t("True")  # returns the boolean True
+
+val = f("false") # returns the boolean False
+val = f("False") # returns the boolean False
 ```
 
 ### Number
@@ -75,7 +92,7 @@ val = Number("-12.4")  # returns -12.4
 
 parseit also provides SingleQuotedString, DoubleQuotedString, QuotedString, EOL,
 EOF, WS, AnyChar, Nothing, and several other primitives. See
-[parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py#L457)
+[parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py#L470)
 
 ## Combinators
 parseit provides several ways of combining primitives and their combinations.
@@ -122,9 +139,9 @@ val = xs("xxxxb") # returns ["x", "x", "x", "x"]
 
 ab = Many(a + b)  # parses "abab..."
 val = ab("")      # produces []
-val = ab("ab")    # produces ["a", b"]
+val = ab("ab")    # produces [["a", b"]]
 val = ab("ba")    # produces []
-val = ab("abab")  # produces ["a", b", "a", "b"]
+val = ab("ababab")# produces [["a", b"], ["a", "b"], ["a", "b"]]
 
 ab = Many(a | b)  # parses any combination of "a" and "b" like "aababbaba..."
 val = ab("aababb")# produces ["a", "a", "b", "a", "b", "b"]
@@ -219,18 +236,20 @@ val = p("xyx")  # raises an exception. nothing would be consumed
 itself directly or indirectly. Here's an arithmetic parser that ties several
 concepts together.
 ```python
+from parseit import Char, Forward, LeftParen, Many, Number, RightParen
+
 def op(args):
-   ans, rest = args
-   for op, arg in rest:
-       if op == "+":
-           ans += arg
-       elif op == "-":
-           ans -= arg
-       elif op == "*":
-           ans *= arg
-       elif op == "/":
-           ans /= arg
-   return ans
+    ans, rest = args
+    for op, arg in rest:
+        if op == "+":
+            ans += arg
+        elif op == "-":
+            ans -= arg
+        elif op == "*":
+            ans *= arg
+        elif op == "/":
+            ans /= arg
+    return ans
 
 expr = Forward()
 factor = (Number | (LeftParen >> expr << RightParen))
