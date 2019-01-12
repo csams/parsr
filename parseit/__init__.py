@@ -475,6 +475,7 @@ SemiColon = Char(";")
 Comma = Char(",")
 
 AnyChar = InSet(string.printable) % "Any Char"
+NonZeroDigit = InSet(set(string.digits) - set("0"))
 Digit = InSet(string.digits) % "Digit"
 Digits = String(string.digits) % "Digits"
 WSChar = InSet(set(string.whitespace) - set("\n\r")) % "Whitespace"
