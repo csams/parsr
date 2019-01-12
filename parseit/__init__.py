@@ -65,6 +65,7 @@ class Ctx:
         self.error_pos = -1
         self.error_msg = None
         self.indents = []
+        self.tags = []
         self.lines = [i for i, x in enumerate(lines) if x == "\n"]
 
     def set(self, pos, msg):
@@ -126,13 +127,16 @@ class Parser(Node):
         data = list(data)
         data.append(None)  # add a terminal so we don't overrun
         ctx = Ctx(data)
+        ex = None
         try:
             _, ret = self.process(0, data, ctx)
             return ret
         except Exception:
             lineno = ctx.line(ctx.error_pos) + 1
             colno = ctx.col(ctx.error_pos) + 1
-            raise Exception(f"At line {lineno} column {colno}: {ctx.error_msg}")
+            ex = Exception(f"At line {lineno} column {colno}: {ctx.error_msg}")
+        if ex:
+            raise ex
 
     def __repr__(self):
         return self.name or f"{self.__class__.__name__}"
@@ -440,12 +444,14 @@ class OneLineComment(Parser):
         super().__init__()
         Start = Literal(s)
         End = EOL | EOF
-        p = ((Start + Many(AnyChar / End) + Opt(AnyChar) + End) | (Start + End)).map(self.combine)
+        p = ((Start + End) | (Start + Many(AnyChar / End) + Opt(AnyChar) + End)).map(self.combine)
         self.add_child(p)
 
     @staticmethod
     def combine(c):
         c = [i for i in c if i]
+        if len(c) == 1:
+            return c[0]
         if len(c) == 2:
             return "".join(c)
         c[1] = "".join(c[1])
@@ -480,7 +486,7 @@ Digit = InSet(string.digits) % "Digit"
 Digits = String(string.digits) % "Digits"
 Letter = InSet(string.ascii_letters)
 Letters = String(string.ascii_letters)
-WSChar = InSet(set(string.whitespace) - set("\n\r")) % "Whitespace"
+WSChar = InSet(set(string.whitespace) - set("\n\r")) % "Whitespace w/o EOL"
 WS = Many(InSet(string.whitespace)) % "Whitespace"
 Number = (Lift(make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)) % "Number"
 
