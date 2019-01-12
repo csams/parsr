@@ -1,5 +1,5 @@
 import string
-from parseit import InSet, String, QuotedString
+from parseit import InSet, String, DoubleQuotedString, QuotedString
 
 
 def test_inset():
@@ -18,5 +18,7 @@ def test_quoted_string():
 
 
 def test_escaped_string():
-    data = r"""'a\'bcde'"""
-    assert QuotedString(data) == "a\'bcde"
+    data = r"""
+    "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\""
+    """.strip()
+    assert DoubleQuotedString(data)
