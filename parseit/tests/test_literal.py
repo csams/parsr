@@ -1,4 +1,4 @@
-from parseit import Keyword, Literal
+from parseit import Literal
 
 
 def test_literal():
@@ -6,8 +6,8 @@ def test_literal():
     assert p("123") == "123"
 
 
-def test_keyword():
-    p = Keyword("true", True)
+def test_literal_value():
+    p = Literal("true", value=True)
     assert p("true") is True
 
 
@@ -16,6 +16,6 @@ def test_literal_ignore_case():
     assert p("TrUe") == "TrUe"
 
 
-def test_keyword_ignore_case():
-    p = Keyword("true", True, ignore_case=True)
+def test_literal_value_ignore_case():
+    p = Literal("true", value=True, ignore_case=True)
     assert p("TRUE") is True

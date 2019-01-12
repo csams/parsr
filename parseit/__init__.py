@@ -360,9 +360,12 @@ class InSet(Parser):
 
 
 class Literal(Parser):
-    def __init__(self, chars, ignore_case=False):
+    NULL = object()
+
+    def __init__(self, chars, value=NULL, ignore_case=False):
         super().__init__()
         self.chars = chars if not ignore_case else chars.lower()
+        self.value = value
         self.ignore_case = ignore_case
 
     def process(self, pos, data, ctx):
@@ -375,7 +378,7 @@ class Literal(Parser):
                     msg = f"Expected {self.chars}."
                     ctx.set(old, msg)
                     raise Exception(msg)
-            return pos, self.chars
+            return pos, (self.chars if self.value is self.NULL else self.value)
         else:
             result = []
             for c in self.chars:
@@ -386,17 +389,7 @@ class Literal(Parser):
                     msg = f"Expected case insensitive {self.chars}."
                     ctx.set(old, msg)
                     raise Exception(msg)
-            return pos, "".join(result)
-
-
-class Keyword(Literal):
-    def __init__(self, chars, value, ignore_case=False):
-        super().__init__(chars, ignore_case=ignore_case)
-        self.value = value
-
-    def process(self, pos, data, ctx):
-        pos, _ = super().process(pos, data, ctx)
-        return pos, self.value
+            return pos, ("".join(result) if self.value is self.NULL else self.value)
 
 
 class String(Parser):

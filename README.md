@@ -11,7 +11,7 @@ for parsing small, non-standard configuration files.
 ## Primitives
 These are the building blocks for matching individual characters, sets of
 characters, and a few convenient objects like numbers. All matching is case
-sensitive except for the `ignore_case` option with `Literal` and `Keyword`.
+sensitive except for the `ignore_case` option with `Literal`.
 
 ### Char
 Match a single character.
@@ -46,7 +46,9 @@ val = vowels("ga") # raises an exception
 ```
 
 ### Literal
-Match a literal string.
+Match a literal string. The `value` keyword lets you return a python value
+instead of the matched input. The `ignore_case` keyword makes the match case
+insensitive.
 ```python
 lit = Literal("true")
 val = lit("true")  # returns "true"
@@ -57,22 +59,17 @@ lit = Literal("true", ignore_case=True)
 val = lit("true")  # returns "true"
 val = lit("TRUE")  # returns "TRUE"
 val = lit("one")   # raises an exception
-```
 
-### Keyword
-Match a literal string but return a python value for it instead of the string
-itself.
-```python
-t = Keyword("true", True)
-f = Keyword("false", False)
+t = Literal("true", value=True)
+f = Literal("false", value=False)
 val = t("true")  # returns the boolean True
 val = t("True")  # raises an exception
 
 val = f("false") # returns the boolean False
 val = f("False") # raises and exception
 
-t = Keyword("true", True, ignore_case=True)
-f = Keyword("false", False, ignore_case=True)
+t = Literal("true", value=True, ignore_case=True)
+f = Literal("false", value=False, ignore_case=True)
 val = t("true")  # returns the boolean True
 val = t("True")  # returns the boolean True
 
@@ -92,7 +89,7 @@ val = Number("-12.4")  # returns -12.4
 
 parseit also provides SingleQuotedString, DoubleQuotedString, QuotedString, EOL,
 EOF, WS, AnyChar, Nothing, and several other primitives. See
-[parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py#L470)
+[parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py#L463)
 
 ## Combinators
 parseit provides several ways of combining primitives and their combinations.
@@ -134,7 +131,7 @@ xs = Many(x)      # parses many (or no) x's in a row
 val = xs("")      # returns []
 val = xs("a")     # returns []
 val = xs("x")     # returns ["x"]
-vxl = xs("xxxxx") # returns ["x", "x", "x", "x", "x"]
+val = xs("xxxxx") # returns ["x", "x", "x", "x", "x"]
 val = xs("xxxxb") # returns ["x", "x", "x", "x"]
 
 ab = Many(a + b)  # parses "abab..."

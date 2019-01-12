@@ -2,16 +2,16 @@
 json_parser handles primitive json parsing. It doesn't handle unicode or
 numbers in scientific notation.
 """
-from parseit import (Colon, Comma, EOF, Forward, Keyword, LeftBracket,
+from parseit import (Colon, Comma, EOF, Forward, Literal, LeftBracket,
                      LeftCurly, Number, RightBracket, RightCurly, QuotedString,
                      WS)
 
 
 JsonArray = Forward() % "Json Array"
 JsonObject = Forward() % "Json Object"
-TRUE = Keyword("true", True) % "TRUE"
-FALSE = Keyword("false", False) % "FALSE"
-NULL = Keyword("null", None) % "NULL"
+TRUE = Literal("true", value=True) % "TRUE"
+FALSE = Literal("false", value=False) % "FALSE"
+NULL = Literal("null", value=None) % "NULL"
 SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL) % "SimpleValue"
 JsonValue = (WS >> SimpleValue << WS) % "Json Value"
 Key = (QuotedString << Colon) % "Key"

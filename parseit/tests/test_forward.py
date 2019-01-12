@@ -1,7 +1,7 @@
-from parseit import Forward, Keyword
+from parseit import Forward, Literal
 
 
 def test_forward():
     true = Forward()
-    true <= Keyword("True", True)
+    true <= Literal("True", value=True)
     assert true("True")
