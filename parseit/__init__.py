@@ -473,6 +473,9 @@ def make_number(sign, int_part, frac_part):
 
 EOF = EOF()
 EOL = InSet("\n\r") % "EOL"
+LT = Char("<")
+GT = Char(">")
+FS = Char("/")
 LeftCurly = Char("{")
 RightCurly = Char("}")
 LeftBracket = Char("[")

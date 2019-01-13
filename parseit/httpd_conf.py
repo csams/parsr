@@ -1,16 +1,13 @@
 import string
-from parseit import (Char, EOF, EOL, EndTagName, Forward, Letters, Many, Number,
-                     OneLineComment, QuotedString, StartTagName, String, WS,
-                     WSChar)
+from parseit import (Char, EOF, EOL, EndTagName, Forward, FS, GT, LT, Letters,
+        Many, Number, OneLineComment, QuotedString, StartTagName, String, WS,
+        WSChar)
 
 
 def skip_none(x):
     return [i for i in x if i is not None]
 
 
-LT = Char("<")
-GT = Char(">")
-FS = Char("/")
 Cont = Char("\\") + EOL
 StartName = WS >> StartTagName(Letters) << WS
 EndName = WS >> EndTagName(Letters) << WS
