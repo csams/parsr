@@ -92,9 +92,9 @@ EOF, WS, AnyChar, Nothing, and several other primitives. See the bottom of
 [parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py)
 
 ## Combinators
-parseit provides several ways of combining primitives and their combinations.
+There are several ways of combining primitives and their combinations.
 
-### Sequencing
+### Sequence
 Require expressions to be in order.
 ```python
 a = Char("a")     # parses a single "a"

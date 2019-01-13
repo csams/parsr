@@ -44,9 +44,10 @@ FS = Char("/")
 
 Complex = Forward()
 
+AttrStart = Many(WSChar)
 AttrEnd = (Many(WSChar) + Cont) | Many(WSChar)
 BareAttr = String(set(string.printable) - (set(string.whitespace) | set("#;{}<>\\'\"")))
-Attr = Many(WSChar) >> (Number | BareAttr | QuotedString) << AttrEnd
+Attr = AttrStart >> (Number | BareAttr | QuotedString) << AttrEnd
 Attrs = Many(Attr)
 
 StartTag = (WS + LT) >> (StartName + Attrs) << (GT + WS)
