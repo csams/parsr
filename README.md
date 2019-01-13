@@ -35,6 +35,9 @@ val = vowel("y")  # raises an exception
 
 ### String
 Match zero or more characters in a set. Matching is greedy.
+
+Since `String` can match zero occurences, it always succeeds. Keep this in mind
+when using it in a list of alternatives or with `FollowedBy` or `NotFollowedBy`.
 ```python
 vowels = String("aeiou")
 val = vowels("a")            # returns "a"
