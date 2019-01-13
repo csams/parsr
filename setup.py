@@ -1,0 +1,30 @@
+from setuptools import setup, find_packages
+
+develop = set([
+    'pytest',
+    'ipython',
+])
+
+
+if __name__ == "__main__":
+    setup(
+        name="parsr",
+        version="0.0.1",
+        description="Parsr is a simple, lightweight parser combinator library",
+        url="https://github.com/csams/parsr",
+        author="Chris Sams",
+        author_email="cwsams@gmail.com",
+        packages=find_packages(),
+        package_data={'': ['LICENSE']},
+        license='Apache 2.0',
+        extras_require={
+            'develop': list(develop),
+        },
+        classifiers=[
+            'Intended Audience :: Developers',
+            'Natural Language :: English',
+            'License :: OSI Approved :: Apache Software License',
+            'Programming Language :: Python :: 3.6'
+        ],
+        include_package_data=True
+    )
