@@ -2,7 +2,7 @@ from parseit.iniparser import loads
 
 
 DATA = """
-[default]
+[DEFAULT]
 trooper_guns = miss
 
 [global]

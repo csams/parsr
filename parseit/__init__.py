@@ -240,7 +240,7 @@ class KeepRight(Parser):
 class Opt(Parser):
     def __init__(self, p, default=None):
         super().__init__()
-        self.set_children([p])
+        self.add_child(p)
         self.default = default
 
     def process(self, pos, data, ctx):

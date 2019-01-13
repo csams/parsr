@@ -1,6 +1,5 @@
 """
-Simple arithmetic with recursive definitions, operator precedence, and left
-associativity.
+Simple arithmetic with usual operator precedence and associativity.
 """
 from parseit import Char, EOF, Forward, LeftParen, Many, Number, RightParen, WS
 
