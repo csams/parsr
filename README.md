@@ -194,14 +194,19 @@ val = qa('"a"')  # returns "a".
 ```
 
 ### Opt
-`Opt` always succeeds. A default value can be provided for when the parser it
-wraps doesnt match anything. The default is `None` if one isn't provided.
+`Opt` wraps a parser and returns a default value of `None` if it fails. That
+value can be changed with the `default` keyword. Input is consumed if the
+wrapped parser succeeds but not otherwise.
 ```python
 a = Char("a")
 o = Opt(a)      # matches an "a" if its available. Still succeeds otherwise but
                 # doesn't advance the read pointer.
 val = o("a")    # returns "a"
-val = o("b")    # returns None
+val = o("b")    # returns None. Read pointer is not advanced.
+
+o = Opt(a, default="x") # matches an "a" if its available. Returns "x" otherwise.
+val = o("a")    # returns "a"
+val = o("b")    # returns "x". Read pointer is not advanced.
 ```
 
 ### map
