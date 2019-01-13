@@ -1,6 +1,6 @@
 """
 parseit is a little library for parsing simple, mostly context free grammars
-that might require knowledge of indentation or nested tags.
+that might require knowledge of indentation or matching tags.
 
 It contains a small set of combinators that perform recursive decent with
 backtracking. Fancy tricks like rewriting left recursions and optimizations like
@@ -14,9 +14,7 @@ from io import StringIO
 
 
 class Node:
-    """
-    Node is a simple tree structure that helps with rendering grammars.
-    """
+    """ Node is a simple tree structure that helps with rendering grammars. """
     def __init__(self):
         self.children = []
 
@@ -143,6 +141,22 @@ class Parser(Node):
         return self.name or f"{self.__class__.__name__}"
 
 
+class Seq(Parser):
+    def __init__(self, left, right):
+        super().__init__()
+        self.set_children([left, right])
+
+    def __add__(self, other):
+        return self.add_child(other)
+
+    def process(self, pos, data, ctx):
+        results = []
+        for p in self.children:
+            pos, res = p.process(pos, data, ctx)
+            results.append(res)
+        return pos, results
+
+
 class Choice(Parser):
     def __init__(self, left, right):
         super().__init__()
@@ -159,22 +173,6 @@ class Choice(Parser):
             except Exception as e:
                 ex = e
         raise ex
-
-
-class Seq(Parser):
-    def __init__(self, left, right):
-        super().__init__()
-        self.set_children([left, right])
-
-    def __add__(self, other):
-        return self.add_child(other)
-
-    def process(self, pos, data, ctx):
-        results = []
-        for p in self.children:
-            pos, res = p.process(pos, data, ctx)
-            results.append(res)
-        return pos, results
 
 
 class Many(Parser):
@@ -319,11 +317,6 @@ class WithIndent(Parser):
             ctx.indents.pop()
 
 
-class Nothing(Parser):
-    def process(self, pos, data, ctx):
-        return pos, None
-
-
 class EOF(Parser):
     def process(self, pos, data, ctx):
         if data[pos] is None:
@@ -361,13 +354,13 @@ class InSet(Parser):
             return (pos + 1, c)
         msg = f"Expected {self}."
         ctx.set(pos, msg)
-        raise Exception()
+        raise Exception(msg)
 
 
 class Literal(Parser):
-    NULL = object()
+    _NULL = object()
 
-    def __init__(self, chars, value=NULL, ignore_case=False):
+    def __init__(self, chars, value=_NULL, ignore_case=False):
         super().__init__()
         self.chars = chars if not ignore_case else chars.lower()
         self.value = value
@@ -383,7 +376,7 @@ class Literal(Parser):
                     msg = f"Expected {self.chars}."
                     ctx.set(old, msg)
                     raise Exception(msg)
-            return pos, (self.chars if self.value is self.NULL else self.value)
+            return pos, (self.chars if self.value is self._NULL else self.value)
         else:
             result = []
             for c in self.chars:
@@ -394,7 +387,7 @@ class Literal(Parser):
                     msg = f"Expected case insensitive {self.chars}."
                     ctx.set(old, msg)
                     raise Exception(msg)
-            return pos, ("".join(result) if self.value is self.NULL else self.value)
+            return pos, ("".join(result) if self.value is self._NULL else self.value)
 
 
 class String(Parser):
@@ -445,7 +438,8 @@ class OneLineComment(Parser):
         super().__init__()
         Start = Literal(s)
         End = EOL | EOF
-        p = ((Start + End) | (Start + Many(AnyChar / End) + Opt(AnyChar) + End)).map(self.combine)
+        p = ((Start + End) | (Start + Many(AnyChar / End) + Opt(AnyChar) + End))
+        p = p.map(self.combine)
         self.add_child(p)
 
     @staticmethod
@@ -467,10 +461,8 @@ def make_number(sign, int_part, frac_part):
     return float(tmp) if "." in tmp else int(tmp)
 
 
-Nothing = Nothing()
 EOF = EOF()
 EOL = InSet("\n\r") % "EOL"
-
 LeftCurly = Char("{")
 RightCurly = Char("}")
 LeftBracket = Char("[")
@@ -480,7 +472,6 @@ RightParen = Char(")")
 Colon = Char(":")
 SemiColon = Char(";")
 Comma = Char(",")
-
 AnyChar = InSet(string.printable) % "Any Char"
 NonZeroDigit = InSet(set(string.digits) - set("0"))
 Digit = InSet(string.digits) % "Digit"
@@ -490,7 +481,6 @@ Letters = String(string.ascii_letters)
 WSChar = InSet(set(string.whitespace) - set("\n\r")) % "Whitespace w/o EOL"
 WS = Many(InSet(string.whitespace)) % "Whitespace"
 Number = (Lift(make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)) % "Number"
-
 SingleQuotedString = Char("'") >> String(set(string.printable) - set("'"), "'") << Char("'")
 DoubleQuotedString = Char('"') >> String(set(string.printable) - set('"'), '"') << Char('"')
 QuotedString = (DoubleQuotedString | SingleQuotedString) % "Quoted String"

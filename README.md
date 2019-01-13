@@ -1,6 +1,6 @@
 # parseit
 parseit is a little library for parsing simple, mostly context free grammars
-that might require knowledge of indentation or nested tags.
+that might require knowledge of indentation or matching tags.
 
 It contains a small set of combinators that perform recursive decent with
 backtracking. Fancy tricks like rewriting left recursions and optimizations like
@@ -98,7 +98,7 @@ val = Number("-12.4")  # returns -12.4
 ```
 
 parseit also provides SingleQuotedString, DoubleQuotedString, QuotedString, EOL,
-EOF, WS, AnyChar, Nothing, and several other primitives. See the bottom of
+EOF, WS, AnyChar, and several other primitives. See the bottom of
 [parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py)
 
 ## Combinators
@@ -272,12 +272,3 @@ expr <= (term + Many((Char("+") | Char("-")) + term)).map(op)
 
 val = expr("2*(3+4)/3+4")  # returns 8.666666666666668
 ```
-
-### WithIndent
-This is the "context sensitive" part of the library. The `WithIndent` class
-wraps a parser and provides it and all of its subparsers with context about
-indentation of the first encountered line. If the WithIndent instance is used in
-a recursive definition, the stack of indents is maintained and made available to
-all active parsers participating in the recursion. See the
-[iniparser](https://github.com/csams/parseit/blob/master/parseit/iniparser.py)
-for an example.
