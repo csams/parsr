@@ -27,20 +27,3 @@ def loads(data):
 
 def load(f):
     return loads(f.read())
-
-
-if __name__ == "__main__":
-    import sys
-    from pprint import pprint
-
-    if len(sys.argv) == 2:
-        arg = sys.argv[1]
-        if arg == "-":
-            data = sys.stdin.read()
-        else:
-            with open(sys.argv[1]) as f:
-                data = f.read()
-        loads(data)
-        pprint(loads(data))
-    else:
-        print("Pass a file.")
