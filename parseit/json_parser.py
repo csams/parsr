@@ -7,17 +7,17 @@ from parseit import (Colon, Comma, EOF, Forward, Literal, LeftBracket,
                      WS)
 
 
-JsonArray = Forward() % "Json Array"
-JsonObject = Forward() % "Json Object"
-TRUE = Literal("true", value=True) % "TRUE"
-FALSE = Literal("false", value=False) % "FALSE"
-NULL = Literal("null", value=None) % "NULL"
-SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL) % "SimpleValue"
-JsonValue = (WS >> SimpleValue << WS) % "Json Value"
-Key = (QuotedString << Colon) % "Key"
-KVPairs = (((WS >> Key) + JsonValue).sep_by(Comma)) % "KVPairs"
-JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket) % "Json Array"
-JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly) % "Json Object"
+JsonArray = Forward()
+JsonObject = Forward()
+TRUE = Literal("true", value=True) % "true"
+FALSE = Literal("false", value=False) % "false"
+NULL = Literal("null", value=None) % "null"
+SimpleValue = (QuotedString | Number | JsonObject | JsonArray | TRUE | FALSE | NULL)
+JsonValue = (WS >> SimpleValue << WS)
+Key = (QuotedString << Colon)
+KVPairs = (((WS >> Key) + JsonValue).sep_by(Comma))
+JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket)
+JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly)
 
 Top = JsonValue + EOF
 
