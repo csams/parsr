@@ -6,8 +6,8 @@ are supported. Sections inherit keys from the `[DEFAULT]` section. All keys are
 converted to lower case. Variable interpolation is not supported.
 """
 import string
-from parseit import (Char, EOF, EOL, LeftBracket, Many, Number, OneLineComment,
-                     Opt, Parser, RightBracket, String, WithIndent, WS)
+from parsr import (Char, EOF, EOL, LeftBracket, Many, Number, OneLineComment,
+                   Opt, Parser, RightBracket, String, WithIndent, WS)
 
 
 class HangingString(Parser):

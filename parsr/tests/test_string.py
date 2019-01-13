@@ -1,5 +1,5 @@
 import string
-from parseit import InSet, String, DoubleQuotedString, QuotedString
+from parsr import InSet, String, DoubleQuotedString, QuotedString
 
 
 def test_inset():

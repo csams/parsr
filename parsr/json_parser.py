@@ -2,9 +2,8 @@
 json_parser handles primitive json parsing. It doesn't handle unicode or
 numbers in scientific notation.
 """
-from parseit import (Colon, Comma, EOF, Forward, Literal, LeftBracket,
-                     LeftCurly, Number, RightBracket, RightCurly, QuotedString,
-                     WS)
+from parsr import (Colon, Comma, EOF, Forward, Literal, LeftBracket, LeftCurly,
+                   Number, RightBracket, RightCurly, QuotedString, WS)
 
 
 JsonArray = Forward()

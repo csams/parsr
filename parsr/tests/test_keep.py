@@ -1,4 +1,4 @@
-from parseit import Colon, QuotedString
+from parsr import Colon, QuotedString
 
 
 def test_keepleft():

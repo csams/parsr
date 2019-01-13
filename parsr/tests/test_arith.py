@@ -1,4 +1,4 @@
-from parseit.arith import evaluate
+from parsr.arith import evaluate
 
 
 def test_single_ops():

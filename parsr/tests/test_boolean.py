@@ -1,4 +1,4 @@
-from parseit import Char
+from parsr import Char
 
 
 def test_and():

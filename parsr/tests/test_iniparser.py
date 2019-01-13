@@ -1,4 +1,4 @@
-from parseit.iniparser import loads
+from parsr.iniparser import loads
 
 
 DATA = """

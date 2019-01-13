@@ -1,7 +1,7 @@
 """
 Simple arithmetic with usual operator precedence and associativity.
 """
-from parseit import Char, EOF, Forward, LeftParen, Many, Number, RightParen, WS
+from parsr import Char, EOF, Forward, LeftParen, Many, Number, RightParen, WS
 
 
 def op(args):

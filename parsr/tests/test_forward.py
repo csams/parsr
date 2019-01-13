@@ -1,4 +1,4 @@
-from parseit import Forward, Literal
+from parsr import Forward, Literal
 
 
 def test_forward():

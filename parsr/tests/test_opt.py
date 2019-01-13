@@ -1,4 +1,4 @@
-from parseit import Char, Opt
+from parsr import Char, Opt
 
 
 def test_opt():

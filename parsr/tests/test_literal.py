@@ -1,4 +1,4 @@
-from parseit import Literal
+from parsr import Literal
 
 
 def test_literal():

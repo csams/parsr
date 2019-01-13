@@ -1,4 +1,4 @@
-from parseit.httpd_conf import loads
+from parsr.httpd_conf import loads
 
 
 DATA = r"""

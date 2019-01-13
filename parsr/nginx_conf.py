@@ -1,6 +1,6 @@
 import string
-from parseit import (EOF, Forward, LeftCurly, Lift, RightCurly, Many, Number,
-                     OneLineComment, SemiColon, SingleQuotedString, String, WS)
+from parsr import (EOF, Forward, LeftCurly, Lift, RightCurly, Many, Number,
+                   OneLineComment, SemiColon, SingleQuotedString, String, WS)
 
 
 class Value:

@@ -1,7 +1,7 @@
 import string
-from parseit import (Char, EOF, EOL, EndTagName, Forward, FS, GT, LT, Letters,
-        Many, Number, OneLineComment, QuotedString, StartTagName, String, WS,
-        WSChar)
+from parsr import (Char, EOF, EOL, EndTagName, Forward, FS, GT, LT, Letters,
+                   Many, Number, OneLineComment, QuotedString, StartTagName,
+                   String, WS, WSChar)
 
 
 def skip_none(x):

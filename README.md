@@ -1,5 +1,5 @@
-# parseit
-parseit is a little library for parsing simple, mostly context free grammars
+# parsr
+parsr is a little library for parsing simple, mostly context free grammars
 that might require knowledge of indentation or matching tags.
 
 It contains a small set of combinators that perform recursive decent with
@@ -10,12 +10,12 @@ than pyparsing yet still sufficient for parsing non-standard configuration
 files.
 
 ## Examples
-* [Arithmetic](https://github.com/csams/parseit/blob/master/parseit/arith.py)
-* [INI configuration](https://github.com/csams/parseit/blob/master/parseit/iniparser.py) is an example of significant indentation.
-* [json](https://github.com/csams/parseit/blob/master/parseit/json_parser.py)
-* [httpd configuration](https://github.com/csams/parseit/blob/master/parseit/httpd_conf.py) is an example of matching starting and ending tags.
-* [nginx configuration](https://github.com/csams/parseit/blob/master/parseit/nginx_conf.py)
-* [corosync configuration](https://github.com/csams/parseit/blob/master/parseit/corosync_conf.py)
+* [Arithmetic](https://github.com/csams/parsr/blob/master/parsr/arith.py)
+* [INI configuration](https://github.com/csams/parsr/blob/master/parsr/iniparser.py) is an example of significant indentation.
+* [json](https://github.com/csams/parsr/blob/master/parsr/json_parser.py)
+* [httpd configuration](https://github.com/csams/parsr/blob/master/parsr/httpd_conf.py) is an example of matching starting and ending tags.
+* [nginx configuration](https://github.com/csams/parsr/blob/master/parsr/nginx_conf.py)
+* [corosync configuration](https://github.com/csams/parsr/blob/master/parsr/corosync_conf.py)
 
 ## Primitives
 These are the building blocks for matching individual characters, sets of
@@ -99,9 +99,9 @@ val = Number("12.4")  # returns 12.4
 val = Number("-12.4")  # returns -12.4
 ```
 
-parseit also provides SingleQuotedString, DoubleQuotedString, QuotedString, EOL,
+parsr also provides SingleQuotedString, DoubleQuotedString, QuotedString, EOL,
 EOF, WS, AnyChar, and several other primitives. See the bottom of
-[parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py)
+[parsr/\_\_init\_\_.py](https://github.com/csams/parsr/blob/master/parsr/__init__.py)
 
 ## Combinators
 There are several ways of combining primitives and their combinations.
@@ -271,7 +271,7 @@ val = p("xyx")  # raises an exception. nothing would be consumed
 itself directly or indirectly. Here's an arithmetic parser that ties several
 concepts together.
 ```python
-from parseit import Char, Forward, LeftParen, Many, Number, RightParen, WS
+from parsr import Char, Forward, LeftParen, Many, Number, RightParen, WS
 
 def op(args):
     ans, rest = args

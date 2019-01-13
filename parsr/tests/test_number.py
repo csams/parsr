@@ -1,4 +1,4 @@
-from parseit import Number
+from parsr import Number
 
 
 def test_zero():

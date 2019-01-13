@@ -2,8 +2,8 @@
 corosync_conf parses corosync configuration files into nested dictionaries.
 """
 import string
-from parseit import (Char, EOF, EOL, Forward, LeftCurly, Literal, RightCurly,
-                     Many, Number, OneLineComment, String, QuotedString, WS)
+from parsr import (Char, EOF, EOL, Forward, LeftCurly, Literal, RightCurly,
+                   Many, Number, OneLineComment, String, QuotedString, WS)
 
 
 def skip_none(x):

@@ -1,4 +1,4 @@
-from parseit.nginx_conf import loads
+from parsr.nginx_conf import loads
 
 
 NGINX_CONF = r"""
