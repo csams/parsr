@@ -247,7 +247,7 @@ val = p("xyx")  # raises an exception. nothing would be consumed
 itself directly or indirectly. Here's an arithmetic parser that ties several
 concepts together.
 ```python
-from parseit import Char, Forward, LeftParen, Many, Number, RightParen
+from parseit import Char, Forward, LeftParen, Many, Number, RightParen, WS
 
 def op(args):
     ans, rest = args
@@ -263,7 +263,7 @@ def op(args):
     return ans
 
 expr = Forward()
-factor = (Number | (LeftParen >> expr << RightParen))
+factor = WS >> (Number | (LeftParen >> expr << RightParen)) << WS
 term = (factor + Many((Char("*") | Char("/")) + factor)).map(op)
 expr <= (term + Many((Char("+") | Char("-")) + term)).map(op)
 

@@ -2,7 +2,7 @@
 Simple arithmetic with recursive definitions, operator precedence, and left
 associativity.
 """
-from parseit import Char, EOF, Forward, LeftParen, Many, Number, RightParen
+from parseit import Char, EOF, Forward, LeftParen, Many, Number, RightParen, WS
 
 
 def op(args):
@@ -20,7 +20,11 @@ def op(args):
 
 
 expr = Forward()
-factor = (Number | (LeftParen >> expr << RightParen))
+factor = WS >> (Number | (LeftParen >> expr << RightParen)) << WS
 term = (factor + Many((Char("*") | Char("/")) + factor)).map(op)
 expr <= (term + Many((Char("+") | Char("-")) + term)).map(op)
 Top = expr + EOF
+
+
+def evaluate(e):
+    return Top(e)[0]
