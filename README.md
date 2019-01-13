@@ -8,6 +8,13 @@ backtracking. Fancy tricks like rewriting left recursions and optimizations like
 implemented since the goal is a library under 500 lines that's still sufficient
 for parsing small, non-standard configuration files.
 
+## Examples
+* [Arithmetic](https://github.com/csams/parseit/blob/master/parseit/arith.py)
+* [INI configuration](https://github.com/csams/parseit/blob/master/parseit/iniparser.py) is an example of significant indentation.
+* [json](https://github.com/csams/parseit/blob/master/parseit/json_parser.py)
+* [httpd configuration](https://github.com/csams/parseit/blob/master/parseit/httpd_conf.py) is an example of matching starting and ending tags.
+* [nginx configuration](https://github.com/csams/parseit/blob/master/parseit/nginx_conf.py)
+
 ## Primitives
 These are the building blocks for matching individual characters, sets of
 characters, and a few convenient objects like numbers. All matching is case
