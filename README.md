@@ -1,9 +1,9 @@
 # parseit
 parseit is a little library for parsing simple, mostly context free grammars
-that might require knowledge of indentation.
+that might require knowledge of indentation or nested tags.
 
-The design is recursive decent with backtracking. Fancy tricks like rewriting
-left recursions and optimizations like
+It contains a small set of combinators that perform recursive decent with
+backtracking. Fancy tricks like rewriting left recursions and optimizations like
 [packrat](https://pdos.csail.mit.edu/~baford/packrat/thesis/thesis.pdf) are not
 implemented since the goal is a library under 500 lines that's still sufficient
 for parsing small, non-standard configuration files.
@@ -88,8 +88,8 @@ val = Number("-12.4")  # returns -12.4
 ```
 
 parseit also provides SingleQuotedString, DoubleQuotedString, QuotedString, EOL,
-EOF, WS, AnyChar, Nothing, and several other primitives. See
-[parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py#L463)
+EOF, WS, AnyChar, Nothing, and several other primitives. See the bottom of
+[parseit/\_\_init\_\_.py](https://github.com/csams/parseit/blob/master/parseit/__init__.py)
 
 ## Combinators
 parseit provides several ways of combining primitives and their combinations.
@@ -114,7 +114,8 @@ val = abc("abc")  # produces ["a", "b", "c"]
 ```
 
 ### Choice
-Accept one of a list of alternatives.
+Accept one of a list of alternatives. Alternatives are checked from left to
+right, and checking stops with the first one to succeed.
 ```python
 abc = a | b | c   # alternation or choice.
 val = abc("a")    # parses a single "a"
@@ -125,6 +126,9 @@ val = abc("d")    # raises an exception
 
 ### Many
 Match zero or more occurences of an expression. Matching is greedy.
+
+Since `Many` can match zero occurences, it always succeeds. Keep this in mind
+when using it in a list of alternatives or with `FollowedBy` or `NotFollowedBy`.
 ```python
 x = Char("x")
 xs = Many(x)      # parses many (or no) x's in a row

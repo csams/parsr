@@ -1,11 +1,12 @@
 """
-parseit is a small library for parsing simple, context free grammars or
-grammars requiring knowledge of indentation.
+parseit is a little library for parsing simple, mostly context free grammars
+that might require knowledge of indentation or nested tags.
 
-The design is top down recursive decent with backtracking. Fancy optimizations
-like packrat are not implemented since the goal is a library under 500 lines
-that's still sufficient for describing small, non-standard configuration files.
-If some file is yaml, xml, or json, just use the standard parsers.
+It contains a small set of combinators that perform recursive decent with
+backtracking. Fancy tricks like rewriting left recursions and optimizations like
+[packrat](https://pdos.csail.mit.edu/~baford/packrat/thesis/thesis.pdf) are not
+implemented since the goal is a library under 500 lines that's still sufficient
+for parsing small, non-standard configuration files.
 """
 import string
 from bisect import bisect_left
