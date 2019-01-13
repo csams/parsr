@@ -1,20 +1,9 @@
-"""
-parseit is a little library for parsing simple, mostly context free grammars
-that might require knowledge of indentation or matching tags.
-
-It contains a small set of combinators that perform recursive decent with
-backtracking. Fancy tricks like rewriting left recursions and optimizations like
-[packrat](https://pdos.csail.mit.edu/~baford/packrat/thesis/thesis.pdf) are not
-implemented since the goal is a library under 500 lines that's still sufficient
-for parsing small, non-standard configuration files.
-"""
 import string
 from bisect import bisect_left
 from io import StringIO
 
 
 class Node:
-    """ Node is a simple tree structure that helps with rendering grammars. """
     def __init__(self):
         self.children = []
 
@@ -33,7 +22,6 @@ class Node:
 
 
 def text_format(tree):
-    """ Formats a tree with indentation. """
     out = StringIO()
     tab = " " * 2
     seen = set()
@@ -55,7 +43,6 @@ def text_format(tree):
 
 
 def render(tree):
-    """ Helper that prints a tree with indentation. """
     print(text_format(tree))
 
 
@@ -141,6 +128,12 @@ class Parser(Node):
         return self.name or f"{self.__class__.__name__}"
 
 
+class SingleWrapper(Parser):
+    def __init__(self, parser):
+        super().__init__()
+        self.add_child(parser)
+
+
 class Seq(Parser):
     def __init__(self, left, right):
         super().__init__()
@@ -175,11 +168,7 @@ class Choice(Parser):
         raise ex
 
 
-class Many(Parser):
-    def __init__(self, p):
-        super().__init__()
-        self.add_child(p)
-
+class Many(SingleWrapper):
     def process(self, pos, data, ctx):
         results = []
         p = self.children[0]
@@ -284,11 +273,18 @@ class Lift(Parser):
         return self.add_child(other)
 
     def process(self, pos, data, ctx):
+        ex = None
         results = []
         for c in self.children:
             pos, res = c.process(pos, data, ctx)
             results.append(res)
-        return pos, self.func(*results)
+        try:
+            return pos, self.func(*results)
+        except Exception as e:
+            ex = e
+        if ex:
+            ctx.set(pos, str(ex))
+            raise ex
 
 
 class Forward(Parser):
@@ -301,20 +297,6 @@ class Forward(Parser):
 
     def process(self, pos, data, ctx):
         return self.children[0].process(pos, data, ctx)
-
-
-class WithIndent(Parser):
-    def __init__(self, p):
-        super().__init__()
-        self.parser = p
-
-    def process(self, pos, data, ctx):
-        new, _ = WS.process(pos, data, ctx)
-        try:
-            ctx.indents.append(ctx.col(new))
-            return self.parser.process(new, data, ctx)
-        finally:
-            ctx.indents.pop()
 
 
 class EOF(Parser):
@@ -454,6 +436,34 @@ class OneLineComment(Parser):
 
     def process(self, pos, data, ctx):
         return self.children[0].process(pos, data, ctx)
+
+
+class WithIndent(SingleWrapper):
+    def process(self, pos, data, ctx):
+        new, _ = WS.process(pos, data, ctx)
+        try:
+            ctx.indents.append(ctx.col(new))
+            return self.children[0].process(new, data, ctx)
+        finally:
+            ctx.indents.pop()
+
+
+class StartTagName(SingleWrapper):
+    def process(self, pos, data, ctx):
+        pos, res = self.children[0].process(pos, data, ctx)
+        ctx.tags.append(res)
+        return pos, res
+
+
+class EndTagName(SingleWrapper):
+    def process(self, pos, data, ctx):
+        pos, res = self.children[0].process(pos, data, ctx)
+        expect = ctx.tags.pop()
+        if res != expect:
+            msg = f"Expected {expect}. Got {res}."
+            ctx.set(pos, msg)
+            raise Exception(msg)
+        return pos, res
 
 
 def make_number(sign, int_part, frac_part):

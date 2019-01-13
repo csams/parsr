@@ -53,7 +53,6 @@ key_chars = header_chars - set("=:")
 value_chars = set(string.printable) - set("\n\r")
 
 LineEnd = EOL | EOF
-
 LeftEnd = (WS + LeftBracket + WS)
 RightEnd = (WS + RightBracket + WS)
 Header = LeftEnd >> String(header_chars) << RightEnd

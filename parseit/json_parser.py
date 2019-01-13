@@ -18,7 +18,6 @@ Key = (QuotedString << Colon)
 KVPairs = (((WS >> Key) + JsonValue).sep_by(Comma))
 JsonArray <= (LeftBracket >> JsonValue.sep_by(Comma) << RightBracket)
 JsonObject <= (LeftCurly >> KVPairs.map(lambda res: {k: v for (k, v) in res}) << RightCurly)
-
 Top = JsonValue + EOF
 
 
