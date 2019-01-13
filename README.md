@@ -5,8 +5,9 @@ that might require knowledge of indentation or matching tags.
 It contains a small set of combinators that perform recursive decent with
 backtracking. Fancy tricks like rewriting left recursions and optimizations like
 [packrat](https://pdos.csail.mit.edu/~baford/packrat/thesis/thesis.pdf) are not
-implemented since the goal is a library under 500 lines that's still sufficient
-for parsing small, non-standard configuration files.
+implemented since the goal is a library that's an order of magnitude smaller
+than pyparsing yet still sufficient for parsing non-standard configuration
+files.
 
 ## Examples
 * [Arithmetic](https://github.com/csams/parseit/blob/master/parseit/arith.py)
@@ -14,6 +15,7 @@ for parsing small, non-standard configuration files.
 * [json](https://github.com/csams/parseit/blob/master/parseit/json_parser.py)
 * [httpd configuration](https://github.com/csams/parseit/blob/master/parseit/httpd_conf.py) is an example of matching starting and ending tags.
 * [nginx configuration](https://github.com/csams/parseit/blob/master/parseit/nginx_conf.py)
+* [corosync configuration](https://github.com/csams/parseit/blob/master/parseit/corosync_conf.py)
 
 ## Primitives
 These are the building blocks for matching individual characters, sets of
@@ -88,8 +90,8 @@ val = f("False") # returns the boolean False
 ```
 
 ### Number
-Match a possibly negative integer or simple floating point number. Returns the
-python int or float for it.
+Match a possibly negative integer or simple floating point number and return
+the python `int` or `float` for it.
 ```python
 val = Number("123")  # returns 123
 val = Number("-12")  # returns -12
@@ -106,13 +108,24 @@ There are several ways of combining primitives and their combinations.
 
 ### Sequence
 Require expressions to be in order.
+
+Sequences are optimized so only the first object maintains a list of itself and
+following objects. Be aware that using a sequence in other sequences will cause
+it to accumulate the elements of the new sequence onto it, which could affect it
+if it's used in multiple definitions. To ensure a sequence isn't "sticky" after
+its definition, wrap it in a `Wrapper` object.
 ```python
 a = Char("a")     # parses a single "a"
 b = Char("b")     # parses a single "b"
 c = Char("c")     # parses a single "c"
 
 ab = a + b        # parses a single "a" followed by a single "b"
+                  # (a + b) creates a "Sequence" object. Using `ab` as an
+                  # element in a later sequence would modify its original
+                  # definition.
+
 abc = a + b + c   # parses "abc"
+                  # (a + b) creates a "Sequence" object to which c is appended
 
 val = ab("ab")    # produces a list ["a", "b"]
 val = ab("a")     # raises an exception
@@ -126,6 +139,12 @@ val = abc("abc")  # produces ["a", "b", "c"]
 ### Choice
 Accept one of a list of alternatives. Alternatives are checked from left to
 right, and checking stops with the first one to succeed.
+
+Choices are optimized so only the first object maintains a list of alternatives.
+Be aware that using a choice object as an element in other choices will
+cause it to accumulate the elemtents of the new choice onto it, which could
+affect it if it's used in multiple definitions. To ensure a Choice isn't
+"sticky" after its definition, wrap it in a `Wrapper` object.
 ```python
 abc = a | b | c   # alternation or choice.
 val = abc("a")    # parses a single "a"

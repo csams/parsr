@@ -14,8 +14,8 @@ def skip_none(x):
     return [i for i in x if i is not None]
 
 
-Comment = OneLineComment("#").map(lambda x: None)
 Stmt = Forward()
+Comment = OneLineComment("#").map(lambda x: None)
 BeginBlock = WS >> LeftCurly << WS
 EndBlock = WS >> RightCurly << WS
 Bare = String(set(string.printable) - (set(string.whitespace) | set("#;{}'\"")))

@@ -128,10 +128,13 @@ class Parser(Node):
         return self.name or f"{self.__class__.__name__}"
 
 
-class SingleWrapper(Parser):
+class Wrapper(Parser):
     def __init__(self, parser):
         super().__init__()
         self.add_child(parser)
+
+    def process(self, pos, data, ctx):
+        return self.children[0].process(pos, data, ctx)
 
 
 class Seq(Parser):
@@ -168,7 +171,7 @@ class Choice(Parser):
         raise ex
 
 
-class Many(SingleWrapper):
+class Many(Wrapper):
     def process(self, pos, data, ctx):
         results = []
         p = self.children[0]
@@ -438,7 +441,7 @@ class OneLineComment(Parser):
         return self.children[0].process(pos, data, ctx)
 
 
-class WithIndent(SingleWrapper):
+class WithIndent(Wrapper):
     def process(self, pos, data, ctx):
         new, _ = WS.process(pos, data, ctx)
         try:
@@ -448,14 +451,14 @@ class WithIndent(SingleWrapper):
             ctx.indents.pop()
 
 
-class StartTagName(SingleWrapper):
+class StartTagName(Wrapper):
     def process(self, pos, data, ctx):
         pos, res = self.children[0].process(pos, data, ctx)
         ctx.tags.append(res)
         return pos, res
 
 
-class EndTagName(SingleWrapper):
+class EndTagName(Wrapper):
     def process(self, pos, data, ctx):
         pos, res = self.children[0].process(pos, data, ctx)
         expect = ctx.tags.pop()
@@ -496,4 +499,4 @@ WS = Many(InSet(string.whitespace)) % "Whitespace"
 Number = (Lift(make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)) % "Number"
 SingleQuotedString = Char("'") >> String(set(string.printable) - set("'"), "'") << Char("'")
 DoubleQuotedString = Char('"') >> String(set(string.printable) - set('"'), '"') << Char('"')
-QuotedString = (DoubleQuotedString | SingleQuotedString) % "Quoted String"
+QuotedString = Wrapper(DoubleQuotedString | SingleQuotedString) % "Quoted String"

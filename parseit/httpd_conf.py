@@ -8,11 +8,11 @@ def skip_none(x):
     return [i for i in x if i is not None]
 
 
+Complex = Forward()
 Cont = Char("\\") + EOL
 StartName = WS >> StartTagName(Letters) << WS
 EndName = WS >> EndTagName(Letters) << WS
 Comment = (WS >> OneLineComment("#")).map(lambda x: None)
-Complex = Forward()
 AttrStart = Many(WSChar)
 AttrEnd = (Many(WSChar) + Cont) | Many(WSChar)
 BareAttr = String(set(string.printable) - (set(string.whitespace) | set("#;{}<>\\'\"")))
