@@ -12,8 +12,8 @@ develop = set([
 if __name__ == "__main__":
     setup(
         name="parsr",
-        version="0.0.5",
-        description="Parsr is a simple, lightweight parser combinator library",
+        version="0.0.6",
+        description="Parsr is a simple parser combinator library in pure python.",
         long_description=open("README.md").read(),
         long_description_content_type='text/markdown',
         url="https://github.com/csams/parsr",
