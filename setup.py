@@ -1,16 +1,21 @@
 from setuptools import setup, find_packages
 
 develop = set([
-    'pytest',
     'ipython',
+    'pytest',
+    'setuptools',
+    'twine',
+    'wheel',
 ])
 
 
 if __name__ == "__main__":
     setup(
         name="parsr",
-        version="0.0.1",
+        version="0.0.4",
         description="Parsr is a simple, lightweight parser combinator library",
+        long_description=open("README.md").read(),
+        long_description_content_type='text/markdown',
         url="https://github.com/csams/parsr",
         author="Chris Sams",
         author_email="cwsams@gmail.com",
