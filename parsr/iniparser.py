@@ -35,9 +35,9 @@ class HangingString(Parser):
 
 
 def to_dict(x):
-    x = dict([i for i in x if i is not None])
+    x = [i for i in x if i is not None]
     d = {}
-    for k, v in x.items():
+    for k, v in x:
         k = k.lower()
         if k in d:
             if not isinstance(d[k], list):

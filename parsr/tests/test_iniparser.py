@@ -21,6 +21,7 @@ vader = definitely Luke's
 
 [settings]
 music=The Imperial March
+color=blue
 color=black
 """
 
@@ -38,3 +39,8 @@ def test_hanging_indent():
 def test_defaults():
     res = loads(DATA)
     assert res["facts"]["trooper_guns"] == "miss"
+
+
+def test_multiple_values():
+    res = loads(DATA)
+    assert len(res["settings"]["color"]) == 2

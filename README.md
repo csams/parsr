@@ -16,6 +16,7 @@ files.
 * [httpd configuration](https://github.com/csams/parsr/blob/master/parsr/httpd_conf.py) is an example of matching starting and ending tags.
 * [nginx configuration](https://github.com/csams/parsr/blob/master/parsr/nginx_conf.py)
 * [corosync configuration](https://github.com/csams/parsr/blob/master/parsr/corosync_conf.py)
+* [multipath configuration](https://github.com/csams/parsr/blob/master/parsr/multipath_conf.py)
 
 ## Primitives
 These are the building blocks for matching individual characters, sets of
