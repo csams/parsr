@@ -482,6 +482,10 @@ def make_number(sign, int_part, frac_part):
     return float(tmp) if "." in tmp else int(tmp)
 
 
+def skip_none(x):
+    return [i for i in x if i is not None]
+
+
 EOF = EOF()
 EOL = InSet("\n\r") % "EOL"
 LineEnd = Wrapper(EOL | EOF)

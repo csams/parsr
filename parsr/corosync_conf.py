@@ -3,12 +3,16 @@ corosync_conf parses corosync configuration files into nested dictionaries.
 """
 import string
 from parsr import (Char, EOF, Forward, LeftCurly, LineEnd, Literal, RightCurly,
-                   Many, Number, OneLineComment, String, QuotedString, WS,
-                   WSChar)
+                   Many, Number, OneLineComment, skip_none, String,
+                   QuotedString, WS, WSChar)
 
 
-def skip_none(x):
-    return [i for i in x if i is not None]
+def loads(data):
+    return Top(data)[0]
+
+
+def load(f):
+    return loads(f.read())
 
 
 Stmt = Forward()
@@ -26,11 +30,3 @@ Stanza = (Name + (Block | (Sep >> Value))) | Comment
 Stmt <= WS >> Stanza << WS
 Doc = Many(Stmt).map(skip_none).map(dict)
 Top = Doc + EOF
-
-
-def loads(data):
-    return Top(data)[0]
-
-
-def load(f):
-    return loads(f.read())

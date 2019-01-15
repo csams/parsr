@@ -1,11 +1,15 @@
 import string
 from parsr import (Char, EOF, EOL, EndTagName, Forward, FS, GT, LT, Letters,
                    LineEnd, Many, Number, OneLineComment, QuotedString,
-                   StartTagName, String, WS, WSChar)
+                   skip_none, StartTagName, String, WS, WSChar)
 
 
-def skip_none(x):
-    return [i for i in x if i is not None]
+def loads(data):
+    return Top(data)[0]
+
+
+def load(f):
+    return loads(f.read())
 
 
 Complex = Forward()
@@ -26,11 +30,3 @@ Stanza = Simple | Complex | Comment
 Complex <= StartTag + Many(Stanza).map(skip_none) << EndTag
 Doc = Many(Stanza).map(skip_none)
 Top = Doc + EOF
-
-
-def loads(data):
-    return Top(data)[0]
-
-
-def load(f):
-    return loads(f.read())

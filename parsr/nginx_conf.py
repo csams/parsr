@@ -1,7 +1,15 @@
 import string
 from parsr import (EOF, Forward, LeftCurly, Lift, LineEnd, RightCurly, Many,
                    Number, OneLineComment, SemiColon, SingleQuotedString,
-                   String, WS, WSChar)
+                   skip_none, String, WS, WSChar)
+
+
+def loads(data):
+    return Top(data)[0]
+
+
+def load(f):
+    return loads(f.read())
 
 
 class Value:
@@ -9,10 +17,6 @@ class Value:
         self.name = name
         self.attrs = attrs
         self.body = body if body != ";" else []
-
-
-def skip_none(x):
-    return [i for i in x if i is not None]
 
 
 Stmt = Forward()
@@ -29,11 +33,3 @@ Stanza = (Lift(Value) * Name * Attrs * (Block | SemiColon)) | Comment
 Stmt <= WS >> Stanza << WS
 Doc = Many(Stmt).map(skip_none)
 Top = Doc + EOF
-
-
-def loads(data):
-    return Top(data)[0]
-
-
-def load(f):
-    return loads(f.read())

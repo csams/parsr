@@ -1,14 +1,15 @@
 import string
 from parsr import (AnyChar, Choice, EOF, EOL, Forward, LeftCurly, LineEnd, Literal, Many,
                    Number, OneLineComment, Opt, QuotedString, RightCurly,
-                   String, WS, WSChar)
+                   skip_none, String, WS, WSChar)
 
 
-scripts = set("postrotate prerotate firstaction lastaction preremove".split())
+def loads(data):
+    return Top(data)[0]
 
 
-def skip_none(x):
-    return [i for i in x if i is not None]
+def load(f):
+    return loads(f.read())
 
 
 def to_dict(x):
@@ -23,19 +24,18 @@ def to_dict(x):
     return d
 
 
+scripts = set("postrotate prerotate firstaction lastaction preremove".split())
+Stanza = Forward()
 Spaces = Many(WSChar)
 Bare = String(set(string.printable) - (set(string.whitespace) | set("#{}'\"")))
 Num = Number & (WSChar | LineEnd)
 Comment = OneLineComment("#").map(lambda x: None)
-
 ScriptStart = WS >> Choice([Literal(s) for s in scripts]) << WS
 ScriptEnd = Literal("endscript")
 Line = (WS >> AnyChar.until(EOL) << WS).map(lambda x: "".join(x))
 Lines = Line.until(ScriptEnd).map(lambda x: "\n".join(x))
 Script = ScriptStart + Lines << ScriptEnd
 Script = Script.map(lambda x: (x[0], [], x[1]))
-
-Stanza = Forward()
 BeginBlock = WS >> LeftCurly << WS
 EndBlock = WS >> RightCurly
 First = (Bare | QuotedString) << Spaces
@@ -46,11 +46,3 @@ Stmt = WS >> (Script | (First + Rest + Opt(Block))) << WS
 Stanza <= WS >> (Stmt | Comment) << WS
 Doc = Many(Stanza).map(skip_none).map(to_dict)
 Top = Doc + EOF
-
-
-def loads(data):
-    return Top(data)[0]
-
-
-def load(f):
-    return loads(f.read())

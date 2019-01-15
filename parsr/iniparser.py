@@ -11,6 +11,24 @@ from parsr import (Char, EOF, EOL, LeftBracket, LineEnd, Many, Number,
                    WithIndent, WS, WSChar)
 
 
+def loads(s):
+    res = Top(s)[0]
+    default = res.get("default")
+    if default:
+        default_keys = set(default)
+        for header, items in res.items():
+            if header != "default":
+                missing = default_keys - set(items)
+                for m in missing:
+                    items[m] = default[m]
+
+    return res
+
+
+def load(f):
+    return loads(f.read())
+
+
 class HangingString(Parser):
     def __init__(self, chars):
         super().__init__()
@@ -66,21 +84,3 @@ Line = Comment | KVPair
 Section = Header + (Many(Line).map(to_dict))
 Doc = Many(Comment | Section).map(to_dict)
 Top = Doc + EOF
-
-
-def loads(s):
-    res = Top(s)[0]
-    default = res.get("default")
-    if default:
-        default_keys = set(default)
-        for header, items in res.items():
-            if header != "default":
-                missing = default_keys - set(items)
-                for m in missing:
-                    items[m] = default[m]
-
-    return res
-
-
-def load(f):
-    return loads(f.read())

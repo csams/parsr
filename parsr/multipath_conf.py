@@ -4,11 +4,16 @@ dictionaries.
 """
 import string
 from parsr import (EOF, Forward, LeftCurly, Literal, LineEnd, RightCurly, Many,
-                   Number, OneLineComment, String, QuotedString, WS, WSChar)
+                   Number, OneLineComment, skip_none, String, QuotedString, WS,
+                   WSChar)
 
 
-def skip_none(x):
-    return [i for i in x if i is not None]
+def loads(data):
+    return Top(data)[0]
+
+
+def load(f):
+    return loads(f.read())
 
 
 def to_dict(x):
@@ -37,11 +42,3 @@ Stanza = (Name + (Block | Value)) | Comment
 Stmt <= WS >> Stanza << WS
 Doc = Many(Stmt).map(skip_none).map(to_dict)
 Top = Doc + EOF
-
-
-def loads(data):
-    return Top(data)[0]
-
-
-def load(f):
-    return loads(f.read())

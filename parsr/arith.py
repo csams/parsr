@@ -5,6 +5,10 @@ addition, subtraction, multiplication, division, and grouping with parentheses.
 from parsr import Char, EOF, Forward, LeftParen, Many, Number, RightParen, WS
 
 
+def evaluate(e):
+    return Top(e)[0]
+
+
 def op(args):
     ans, rest = args
     for op, arg in rest:
@@ -55,7 +59,3 @@ expr <= (term + Many(LowOps + term)).map(op)
 
 # Top returns [result, None] on success and raises an Exception on failure.
 Top = expr + EOF
-
-
-def evaluate(e):
-    return Top(e)[0]
