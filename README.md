@@ -287,8 +287,19 @@ val = p("xyx")  # raises an exception. nothing would be consumed
 
 ### Forward
 `Forward` allows recursive grammars where a nonterminal's definition includes
-itself directly or indirectly. Here's an arithmetic parser that ties several
-concepts together.
+itself directly or indirectly. You initially create a `Forward` nonterminal
+with regular assignment.
+```python
+expr = Forward()
+```
+
+You later give it its real definition with the `<=` operator.
+```python
+expr <= (term + Many(LowOps + term)).map(op)
+```
+
+### Arithmetic
+Here's an arithmetic parser that ties several concepts together.
 ```python
 from parsr import Char, EOF, Forward, LeftParen, Many, Number, RightParen, WS
 
@@ -336,6 +347,8 @@ factor = WS >> (Number | (LeftParen >> expr << RightParen)) << WS
 term = (factor + Many(HighOps + factor)).map(op)
 
 # expr has the same form and behavior as term.
+# Notice that we assign to expr with "<=" instead of "=". This is how you assign
+# to nonterminals that have been declared previously as Forward.
 expr <= (term + Many(LowOps + term)).map(op)
 
 val = expr("2*(3+4)/3+4")  # returns 8.666666666666668
