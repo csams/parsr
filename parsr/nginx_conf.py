@@ -1,6 +1,7 @@
 import string
-from parsr import (EOF, Forward, LeftCurly, Lift, RightCurly, Many, Number,
-                   OneLineComment, SemiColon, SingleQuotedString, String, WS)
+from parsr import (EOF, Forward, LeftCurly, Lift, LineEnd, RightCurly, Many,
+                   Number, OneLineComment, SemiColon, SingleQuotedString,
+                   String, WS, WSChar)
 
 
 class Value:
@@ -15,12 +16,13 @@ def skip_none(x):
 
 
 Stmt = Forward()
+Num = Number & (WSChar | LineEnd)
 Comment = OneLineComment("#").map(lambda x: None)
 BeginBlock = WS >> LeftCurly << WS
 EndBlock = WS >> RightCurly << WS
 Bare = String(set(string.printable) - (set(string.whitespace) | set("#;{}'\"")))
 Name = WS >> String(string.ascii_letters + "_") << WS
-Attr = WS >> (Number | Bare | SingleQuotedString) << WS
+Attr = WS >> (Num | Bare | SingleQuotedString) << WS
 Attrs = Many(Attr)
 Block = BeginBlock >> Many(Stmt).map(skip_none) << EndBlock
 Stanza = (Lift(Value) * Name * Attrs * (Block | SemiColon)) | Comment

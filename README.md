@@ -17,6 +17,7 @@ files.
 * [nginx configuration](https://github.com/csams/parsr/blob/master/parsr/nginx_conf.py)
 * [corosync configuration](https://github.com/csams/parsr/blob/master/parsr/corosync_conf.py)
 * [multipath configuration](https://github.com/csams/parsr/blob/master/parsr/multipath_conf.py)
+* [logrotate configuration](https://github.com/csams/parsr/blob/master/parsr/logrotate_conf.py)
 
 ## Primitives
 These are the building blocks for matching individual characters, sets of
@@ -176,6 +177,23 @@ val = ab("ababab")# produces [["a", b"], ["a", "b"], ["a", "b"]]
 
 ab = Many(a | b)  # parses any combination of "a" and "b" like "aababbaba..."
 val = ab("aababb")# produces ["a", "a", "b", "a", "b", "b"]
+```
+
+### Until
+Match zero or more occurences of an expression until a predicate matches.
+Matching is greedy.
+
+Since `Until` can match zero occurences, it always succeeds. Keep this in mind
+when using it in a list of alternatives or with `FollowedBy` or `NotFollowedBy`.
+```python
+cs = AnyChar.until(Char("y")) # parses many (or no) characters until a "y" is
+                              # encountered.
+
+val = cs("")                  # returns []
+val = cs("a")                 # returns ["a"]
+val = cs("x")                 # returns ["x"]
+val = cs("ccccc")             # returns ["c", "c", "c", "c", "c"]
+val = cs("abcdycc")           # returns ["a", "b", "c", "d"]
 ```
 
 ### Followed by

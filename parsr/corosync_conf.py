@@ -3,7 +3,7 @@ corosync_conf parses corosync configuration files into nested dictionaries.
 """
 import string
 from parsr import (Char, EOF, EOL, Forward, LeftCurly, Literal, RightCurly,
-                   Many, Number, OneLineComment, String, QuotedString, WS)
+                   Many, Number, OneLineComment, String, QuotedString, WS, WSChar)
 
 
 def skip_none(x):
@@ -12,7 +12,7 @@ def skip_none(x):
 
 Stmt = Forward()
 LineEnd = (EOL | EOF) % "LineEnd"
-Num = (Number << LineEnd) % "Num"
+Num = (Number & (WSChar | LineEnd)) % "Num"
 NULL = Literal("none", value=None) % "none"
 Sep = (Char(":") | Char("=")) % "Sep"
 Comment = (WS >> OneLineComment("#").map(lambda x: None)) % "Comment"

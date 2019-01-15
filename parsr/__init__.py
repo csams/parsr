@@ -87,8 +87,11 @@ class Parser(Node):
     def sep_by(self, sep):
         return Lift(self.accumulate) * Opt(self) * Many(sep >> self)
 
+    def until(self, pred):
+        return Until(self, pred)
+
     def __or__(self, other):
-        return Choice(self, other)
+        return Choice([self, other])
 
     def __and__(self, other):
         return FollowedBy(self, other)
@@ -97,7 +100,7 @@ class Parser(Node):
         return NotFollowedBy(self, other)
 
     def __add__(self, other):
-        return Seq(self, other)
+        return Seq([self, other])
 
     def __lshift__(self, other):
         return KeepLeft(self, other)
@@ -138,9 +141,9 @@ class Wrapper(Parser):
 
 
 class Seq(Parser):
-    def __init__(self, left, right):
+    def __init__(self, children):
         super().__init__()
-        self.set_children([left, right])
+        self.set_children(children)
 
     def __add__(self, other):
         return self.add_child(other)
@@ -154,9 +157,9 @@ class Seq(Parser):
 
 
 class Choice(Parser):
-    def __init__(self, left, right):
+    def __init__(self, children):
         super().__init__()
-        self.set_children([left, right])
+        self.set_children(children)
 
     def __or__(self, other):
         return self.add_child(other)
@@ -180,6 +183,28 @@ class Many(Wrapper):
                 pos, res = p.process(pos, data, ctx)
                 results.append(res)
             except Exception:
+                break
+        return pos, results
+
+
+class Until(Parser):
+    def __init__(self, parser, predicate):
+        super().__init__()
+        self.set_children([parser, predicate])
+
+    def process(self, pos, data, ctx):
+        parser, pred = self.children
+        results = []
+        while True:
+            try:
+                pred.process(pos, data, ctx)
+            except Exception:
+                try:
+                    pos, res = parser.process(pos, data, ctx)
+                    results.append(res)
+                except Exception:
+                    break
+            else:
                 break
         return pos, results
 
@@ -407,12 +432,8 @@ class EnclosedComment(Parser):
         super().__init__()
         Start = Literal(s)
         End = Literal(e)
-        p = (Start + Many(AnyChar / End) + AnyChar + End).map(self.combine)
+        p = Start >> AnyChar.until(End).map(lambda x: "".join(x)) << End
         self.add_child(p)
-
-    @staticmethod
-    def combine(c):
-        return c[0] + "".join(c[1]) + "".join(c[2:])
 
     def process(self, pos, data, ctx):
         return self.children[0].process(pos, data, ctx)
@@ -421,21 +442,8 @@ class EnclosedComment(Parser):
 class OneLineComment(Parser):
     def __init__(self, s):
         super().__init__()
-        Start = Literal(s)
-        End = EOL | EOF
-        p = ((Start + End) | (Start + Many(AnyChar / End) + Opt(AnyChar) + End))
-        p = p.map(self.combine)
+        p = (Literal(s) >> AnyChar.until(EOL | EOF)).map(lambda x: "".join(x))
         self.add_child(p)
-
-    @staticmethod
-    def combine(c):
-        c = [i for i in c if i]
-        if len(c) == 1:
-            return c[0]
-        if len(c) == 2:
-            return "".join(c)
-        c[1] = "".join(c[1])
-        return "".join(c)
 
     def process(self, pos, data, ctx):
         return self.children[0].process(pos, data, ctx)
@@ -476,6 +484,7 @@ def make_number(sign, int_part, frac_part):
 
 EOF = EOF()
 EOL = InSet("\n\r") % "EOL"
+LineEnd = Wrapper(EOL | EOF)
 LT = Char("<")
 GT = Char(">")
 FS = Char("/")
