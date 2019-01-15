@@ -3,8 +3,8 @@ multipath_conf parses multipath.conf configuration files into nested
 dictionaries.
 """
 import string
-from parsr import (EOF, EOL, Forward, LeftCurly, Literal, RightCurly, Many,
-                   Number, OneLineComment, String, QuotedString, WS)
+from parsr import (EOF, Forward, LeftCurly, Literal, LineEnd, RightCurly, Many,
+                   Number, OneLineComment, String, QuotedString, WS, WSChar)
 
 
 def skip_none(x):
@@ -24,10 +24,9 @@ def to_dict(x):
 
 
 Stmt = Forward()
-LineEnd = (EOL | EOF) % "LineEnd"
-Num = (Number << LineEnd) % "Num"
-NULL = Literal("none", value=None) % "none"
-Comment = (WS >> OneLineComment("#").map(lambda x: None)) % "Comment"
+Num = Number & (WSChar | LineEnd)
+NULL = Literal("none", value=None)
+Comment = (WS >> OneLineComment("#").map(lambda x: None))
 BeginBlock = (WS >> LeftCurly << WS)
 EndBlock = (WS >> RightCurly << WS)
 Bare = String(set(string.printable) - (set(string.whitespace) | set("#{}'\"")))

@@ -6,8 +6,9 @@ are supported. Sections inherit keys from the `[DEFAULT]` section. All keys are
 converted to lower case. Variable interpolation is not supported.
 """
 import string
-from parsr import (Char, EOF, EOL, LeftBracket, Many, Number, OneLineComment,
-                   Opt, Parser, RightBracket, String, WithIndent, WS)
+from parsr import (Char, EOF, EOL, LeftBracket, LineEnd, Many, Number,
+                   OneLineComment, Opt, Parser, RightBracket, String,
+                   WithIndent, WS, WSChar)
 
 
 class HangingString(Parser):
@@ -52,13 +53,13 @@ header_chars = (set(string.printable) - set(string.whitespace) - set("[]"))
 key_chars = header_chars - set("=:")
 value_chars = set(string.printable) - set("\n\r")
 
-LineEnd = EOL | EOF
+Num = Number & (WSChar | LineEnd)
 LeftEnd = (WS + LeftBracket + WS)
 RightEnd = (WS + RightBracket + WS)
 Header = LeftEnd >> String(header_chars) << RightEnd
 Key = WS >> String(key_chars) << WS
 Sep = Char("=") | Char(":")
-Value = WS >> ((Number << LineEnd) | HangingString(value_chars))
+Value = WS >> (Num | HangingString(value_chars))
 KVPair = WithIndent(Key + Opt(Sep + Value, default=[None, None])).map(lambda a: (a[0], a[1][1]))
 Comment = (WS >> (OneLineComment("#") | OneLineComment(";")).map(lambda x: None))
 Line = Comment | KVPair

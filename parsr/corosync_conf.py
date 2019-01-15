@@ -2,8 +2,9 @@
 corosync_conf parses corosync configuration files into nested dictionaries.
 """
 import string
-from parsr import (Char, EOF, EOL, Forward, LeftCurly, Literal, RightCurly,
-                   Many, Number, OneLineComment, String, QuotedString, WS, WSChar)
+from parsr import (Char, EOF, Forward, LeftCurly, LineEnd, Literal, RightCurly,
+                   Many, Number, OneLineComment, String, QuotedString, WS,
+                   WSChar)
 
 
 def skip_none(x):
@@ -11,11 +12,10 @@ def skip_none(x):
 
 
 Stmt = Forward()
-LineEnd = (EOL | EOF) % "LineEnd"
-Num = (Number & (WSChar | LineEnd)) % "Num"
-NULL = Literal("none", value=None) % "none"
-Sep = (Char(":") | Char("=")) % "Sep"
-Comment = (WS >> OneLineComment("#").map(lambda x: None)) % "Comment"
+Num = (Number & (WSChar | LineEnd))
+NULL = Literal("none", value=None)
+Sep = (Char(":") | Char("="))
+Comment = (WS >> OneLineComment("#").map(lambda x: None))
 BeginBlock = (WS >> LeftCurly << WS)
 EndBlock = (WS >> RightCurly << WS)
 Bare = String(set(string.printable) - (set(string.whitespace) | set("#{}'\"")))
