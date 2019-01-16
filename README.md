@@ -299,7 +299,10 @@ expr <= (term + Many(LowOps + term)).map(op)
 ```
 
 ### Arithmetic
-Here's an arithmetic parser that ties several concepts together.
+Here's an arithmetic parser that ties several concepts together. A progression
+of this parser from a simple imperative style to what you see below is in the
+[repo](https://github.com/csams/parsr/blob/master/parsr/lesson).
+
 ```python
 from parsr import Char, EOF, Forward, LeftParen, Many, Number, RightParen, WS
 
