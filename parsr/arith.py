@@ -2,7 +2,7 @@
 Simple arithmetic with usual operator precedence and associativity. It allows
 addition, subtraction, multiplication, division, and grouping with parentheses.
 """
-from parsr import Char, EOF, Forward, LeftParen, Many, Number, RightParen, WS
+from parsr import EOF, Forward, InSet, LeftParen, Many, Number, RightParen, WS
 
 
 def evaluate(e):
@@ -24,10 +24,10 @@ def op(args):
 
 
 # high precedence operations
-HighOps = Char("*") | Char("/")
+HighOps = InSet("*/")
 
 # low precedence operations
-LowOps = Char("+") | Char("-")
+LowOps = InSet("+-")
 
 # Operator precedence is handled by having different declarations for each
 # prededence level. expr handles low level operations, term handles high level

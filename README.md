@@ -304,7 +304,7 @@ of this parser from a simple imperative style to what you see below is in the
 [repo](https://github.com/csams/parsr/blob/master/parsr/lesson).
 
 ```python
-from parsr import Char, EOF, Forward, LeftParen, Many, Number, RightParen, WS
+from parsr import EOF, Forward, InSet, LeftParen, Many, Number, RightParen, WS
 
 
 def op(args):
@@ -322,10 +322,10 @@ def op(args):
 
 
 # high precedence operations
-HighOps = Char("*") | Char("/")
+HighOps = InSet("*/")
 
 # low precedence operations
-LowOps = Char("+") | Char("-")
+LowOps = InSet("+-")
 
 # Operator precedence is handled by having different declarations for each
 # prededence level. expr handles low level operations, term handles high level
