@@ -9,6 +9,9 @@ implemented since the goal is a library that's an order of magnitude smaller
 than pyparsing yet still sufficient for parsing non-standard configuration
 files.
 
+To see how a handwritten parser might evolve to something like this project,
+check out the [lesson](https://github.com/csams/parsr/blob/master/parsr/lesson).
+
 ## Examples
 * [Arithmetic](https://github.com/csams/parsr/blob/master/parsr/arith.py)
 * [INI configuration](https://github.com/csams/parsr/blob/master/parsr/iniparser.py) is an example of significant indentation.
