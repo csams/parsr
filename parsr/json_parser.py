@@ -16,9 +16,9 @@ def load(f):
 
 JsonArray = Forward()
 JsonObject = Forward()
-TRUE = Literal("true", value=True) % "true"
-FALSE = Literal("false", value=False) % "false"
-NULL = Literal("null", value=None) % "null"
+TRUE = Literal("true", value=True)
+FALSE = Literal("false", value=False)
+NULL = Literal("null", value=None)
 SimpleValue = (Number | QuotedString | JsonObject | JsonArray | TRUE | FALSE | NULL)
 JsonValue = (WS >> SimpleValue << WS)
 Key = (QuotedString << Colon)
