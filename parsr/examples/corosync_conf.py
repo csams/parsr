@@ -5,10 +5,11 @@ import string
 from parsr import (Char, EOF, Forward, LeftCurly, LineEnd, Literal, RightCurly,
                    Many, Number, OneLineComment, skip_none, String,
                    QuotedString, WS, WSChar)
+from parsr.query.model import from_dict
 
 
 def loads(data):
-    return Top(data)[0]
+    return from_dict(Top(data)[0])
 
 
 def load(f):

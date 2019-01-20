@@ -87,6 +87,6 @@ quorum {
 
 def test_corosync_conf():
     res = loads(DATA)
-    assert res["totem"]["version"] == 2
-    assert res["totem"]["interface"]["bindnetaddr"] == "192.168.1.0"
-    assert len(res["quorum"]) == 0
+    assert res["totem"]["version"].value == 2
+    assert res["totem"]["interface"]["bindnetaddr"].value == "192.168.1.0"
+    assert len(res["quorum"]) == 1
