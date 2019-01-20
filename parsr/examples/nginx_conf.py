@@ -2,6 +2,7 @@ import string
 from parsr import (EOF, Forward, LeftCurly, Lift, LineEnd, RightCurly, Many,
                    Number, OneLineComment, SemiColon, SingleQuotedString,
                    skip_none, String, WS, WSChar)
+from parsr.query.model import Node
 
 
 def loads(data):
@@ -12,11 +13,10 @@ def load(f):
     return loads(f.read())
 
 
-class Value:
-    def __init__(self, name, attrs, body):
-        self.name = name
-        self.attrs = attrs
-        self.body = body if body != ";" else []
+def to_node(name, attrs, body):
+    if body == ";":
+        return Node(name=name, attrs=attrs)
+    return Node(name=name, attrs=attrs, children=body)
 
 
 Stmt = Forward()
@@ -29,7 +29,7 @@ Name = WS >> String(string.ascii_letters + "_") << WS
 Attr = WS >> (Num | Bare | SingleQuotedString) << WS
 Attrs = Many(Attr)
 Block = BeginBlock >> Many(Stmt).map(skip_none) << EndBlock
-Stanza = (Lift(Value) * Name * Attrs * (Block | SemiColon)) | Comment
+Stanza = (Lift(to_node) * Name * Attrs * (Block | SemiColon)) | Comment
 Stmt <= WS >> Stanza << WS
 Doc = Many(Stmt).map(skip_none)
 Top = Doc + EOF

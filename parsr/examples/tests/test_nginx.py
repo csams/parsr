@@ -1,4 +1,4 @@
-from parsr.nginx_conf import loads
+from parsr.examples.nginx_conf import loads
 
 
 NGINX_CONF = r"""
@@ -180,4 +180,4 @@ def test_nginx_fastcgi():
 def test_nginx_mime_types():
     res = loads(MIME_TYPES)
     assert len(res) == 1
-    assert len(res[0].body) == 46
+    assert len(res[0]) == 46

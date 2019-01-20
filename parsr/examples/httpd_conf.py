@@ -1,15 +1,25 @@
 import string
 from parsr import (Char, EOF, EOL, EndTagName, Forward, FS, GT, LT, Letters,
-                   LineEnd, Many, Number, OneLineComment, QuotedString,
+                   Lift, LineEnd, Many, Number, OneLineComment, QuotedString,
                    skip_none, StartTagName, String, WS, WSChar)
+from parsr.query.model import Node
 
 
 def loads(data):
-    return Top(data)[0]
+    return Node(children=Top(data)[0])
 
 
 def load(f):
     return loads(f.read())
+
+
+def simple_to_node(name, attrs):
+    return Node(name=name, attrs=attrs)
+
+
+def complex_to_node(tag, children):
+    name, attrs = tag
+    return Node(name=name, attrs=attrs, children=children)
 
 
 Complex = Forward()
@@ -25,8 +35,8 @@ Attr = AttrStart >> (Num | BareAttr | QuotedString) << AttrEnd
 Attrs = Many(Attr)
 StartTag = (WS + LT) >> (StartName + Attrs) << (GT + WS)
 EndTag = (WS + LT + FS) >> EndName << (GT + WS)
-Simple = WS >> (Letters + Attrs) << WS
+Simple = WS >> (Lift(simple_to_node) * Letters * Attrs) << WS
 Stanza = Simple | Complex | Comment
-Complex <= StartTag + Many(Stanza).map(skip_none) << EndTag
+Complex <= (Lift(complex_to_node) * StartTag * Many(Stanza).map(skip_none)) << EndTag
 Doc = Many(Stanza).map(skip_none)
 Top = Doc + EOF

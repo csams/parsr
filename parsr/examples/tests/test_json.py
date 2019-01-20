@@ -1,6 +1,6 @@
 import json
-from parsr.json_parser import (TRUE, FALSE, NULL, JsonArray, JsonObject,
-                               JsonValue)
+from parsr.examples.json_parser import (TRUE, FALSE, NULL, JsonArray, JsonObject,
+                                        JsonValue)
 
 DATA0 = """
 {

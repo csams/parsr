@@ -1,4 +1,4 @@
-from parsr.logrotate_conf import loads
+from parsr.examples.logrotate_conf import loads
 
 EXAMPLE = """
 # sample logrotate configuration file

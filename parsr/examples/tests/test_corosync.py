@@ -1,4 +1,4 @@
-from parsr.corosync_conf import loads
+from parsr.examples.corosync_conf import loads
 
 DATA = r"""
 # Please read the corosync.conf.5 manual page

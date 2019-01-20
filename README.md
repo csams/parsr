@@ -13,14 +13,14 @@ To see how a handwritten parser might evolve to something like this project,
 check out the [lesson](https://github.com/csams/parsr/blob/master/parsr/lesson).
 
 ## Examples
-* [Arithmetic](https://github.com/csams/parsr/blob/master/parsr/arith.py)
-* [INI configuration](https://github.com/csams/parsr/blob/master/parsr/iniparser.py) is an example of significant indentation.
-* [json](https://github.com/csams/parsr/blob/master/parsr/json_parser.py)
-* [httpd configuration](https://github.com/csams/parsr/blob/master/parsr/httpd_conf.py) is an example of matching starting and ending tags.
-* [nginx configuration](https://github.com/csams/parsr/blob/master/parsr/nginx_conf.py)
-* [corosync configuration](https://github.com/csams/parsr/blob/master/parsr/corosync_conf.py)
-* [multipath configuration](https://github.com/csams/parsr/blob/master/parsr/multipath_conf.py)
-* [logrotate configuration](https://github.com/csams/parsr/blob/master/parsr/logrotate_conf.py)
+* [Arithmetic](https://github.com/csams/parsr/blob/master/parsr/examples/arith.py)
+* [INI configuration](https://github.com/csams/parsr/blob/master/parsr/examples/iniparser.py) is an example of significant indentation.
+* [json](https://github.com/csams/parsr/blob/master/parsr/examples/json_parser.py)
+* [httpd configuration](https://github.com/csams/parsr/blob/master/parsr/examples/httpd_conf.py) is an example of matching starting and ending tags.
+* [nginx configuration](https://github.com/csams/parsr/blob/master/parsr/examples/nginx_conf.py)
+* [corosync configuration](https://github.com/csams/parsr/blob/master/parsr/examples/corosync_conf.py)
+* [multipath configuration](https://github.com/csams/parsr/blob/master/parsr/examples/multipath_conf.py)
+* [logrotate configuration](https://github.com/csams/parsr/blob/master/parsr/examples/logrotate_conf.py)
 
 ## Primitives
 These are the building blocks for matching individual characters, sets of

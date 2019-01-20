@@ -1,4 +1,4 @@
-from parsr.multipath_conf import loads
+from parsr.examples.multipath_conf import loads
 
 
 EXAMPLE = """

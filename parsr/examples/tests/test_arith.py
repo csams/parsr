@@ -1,4 +1,4 @@
-from parsr.arith import evaluate
+from parsr.examples.arith import evaluate
 
 
 def test_single_ops():
