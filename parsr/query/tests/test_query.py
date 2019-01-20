@@ -1,5 +1,4 @@
-from parsr.query.dsl import all_, any_, lt, startswith, endswith
-from parsr.query.model import from_dict, Entry
+from parsr.query import all_, any_, lt, Entry, from_dict, startswith, endswith
 
 
 simple_data = {

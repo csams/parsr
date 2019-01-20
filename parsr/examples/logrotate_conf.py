@@ -2,7 +2,7 @@ import string
 from parsr import (AnyChar, Choice, EOF, EOL, Forward, LeftCurly, LineEnd, Literal, Many,
                    Number, OneLineComment, Opt, QuotedString, RightCurly,
                    skip_none, String, WS, WSChar)
-from parsr.query.model import Entry
+from parsr.query import Entry
 
 
 def loads(data):

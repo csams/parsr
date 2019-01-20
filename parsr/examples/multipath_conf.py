@@ -6,7 +6,7 @@ import string
 from parsr import (EOF, Forward, LeftCurly, Lift, Literal, LineEnd, RightCurly,
                    Many, Number, OneLineComment, skip_none, String,
                    QuotedString, WS, WSChar)
-from parsr.query.model import Entry
+from parsr.query import Entry
 
 
 def loads(data):
