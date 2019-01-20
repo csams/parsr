@@ -48,13 +48,17 @@ class Entry:
     @property
     def root(self):
         p = self
-        while p and p.parent:
+        while p.parent is not None and p.parent.parent is not None:
             p = p.parent
         return p
 
     @property
     def grandchildren(self):
         return list(chain.from_iterable(c.children for c in self.children))
+
+    def find_all(self, *queries, roots=False):
+        query = compile_queries(*queries)
+        return find_all(query, self.children, roots=roots)
 
     def __contains__(self, key):
         return len(self[key]) > 0
@@ -69,10 +73,14 @@ class Entry:
         return Result(children=[c for c in self.children if query.test(c)])
 
     def __repr__(self):
-        return f"Entry('{self.name}')"
+        return f"{self.name}: {self.string_value}"
 
 
 class Result(Entry):
+    def __init__(self, children=None):
+        super().__init__()
+        self.children = children or []
+
     @property
     def string_value(self):
         v = self.value
@@ -85,11 +93,18 @@ class Result(Entry):
             return self.children[0].value
         raise Exception("More than one value to return.")
 
+    def find_all(self, *queries, roots=False):
+        query = compile_queries(*queries)
+        return find_all(query, self.grandchildren, roots=roots)
+
     def __getitem__(self, query):
         if isinstance(query, (int, slice)):
             return self.children[query]
         query = desugar(query)
         return Result(children=[c for c in self.grandchildren if query.test(c)])
+
+    def __repr__(self):
+        return f"<Result>"
 
 
 def from_dict(orig):
@@ -190,6 +205,14 @@ def desugar(q):
     return desugar_name(q)
 
 
+def flatten(nodes):
+    def inner(n):
+        res = [n]
+        res.extend(chain.from_iterable(inner(c) for c in n.children))
+        return res
+    return list(chain.from_iterable(inner(n) for n in nodes))
+
+
 def compile_queries(*queries):
     def match(qs, nodes):
         q = desugar(qs[0])
@@ -203,6 +226,23 @@ def compile_queries(*queries):
     def inner(nodes):
         return Result(children=match(queries, nodes))
     return inner
+
+
+def find_all(query, nodes, roots=False):
+    results = []
+    for n in flatten(nodes):
+        results.extend(query([n]))
+    if not roots:
+        return Result(children=results)
+
+    seen = set()
+    top = []
+    for r in results:
+        root = r.root
+        if root not in seen:
+            seen.add(root)
+            top.append(root)
+    return Result(children=top)
 
 
 lt = lift2(operator.lt)

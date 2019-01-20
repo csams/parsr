@@ -1,4 +1,5 @@
-from parsr.query import all_, any_, compile_queries, Entry, lt
+from parsr.query import Entry
+
 
 complex_tree = Entry(name="root",
                     attrs=[1, 2, 3, 4],
@@ -14,20 +15,14 @@ complex_tree = Entry(name="root",
                     ])
 
 
-def test_complex():
-    t = complex_tree
+def test_find_all_leaves():
+    res = complex_tree.find_all("puppy")
+    assert len(res) == 2
+    assert res[0].name == "puppy"
+    assert res[1].name == "puppy"
 
-    q = compile_queries("child")
-    assert len(q(t.children)) == 3
 
-    q = compile_queries(("child", 3))
-    assert len(q(t.children)) == 2
-
-    q = compile_queries(("child", all_(lt(3))))
-    assert len(q(t.children)) == 1
-
-    q = compile_queries(("child", any_(1, 2)))
-    assert len(q(t.children)) == 3
-
-    q = compile_queries("dog", "puppy")
-    assert len(q(t.children)) == 2
+def test_find_all_roots():
+    res = complex_tree.find_all("puppy", roots=True)
+    assert len(res) == 1
+    assert res[0].name == "dog"
