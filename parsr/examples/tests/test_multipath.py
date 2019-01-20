@@ -154,7 +154,6 @@ def test_multipath_example():
 
 def test_multipath_conf():
     res = loads(CONF)
-    print(res)
     assert res["blacklist"]["device"][0]["product"] == "3S42"
 
 

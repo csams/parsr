@@ -57,20 +57,20 @@ def test_logrotate_simple():
 
 def test_logrotate_example():
     res = loads(EXAMPLE)
-    assert res["compress"] is None
-    assert res["/var/log/messages"]["rotate"] == 5
-    assert res["/var/log/messages"]["weekly"] is None
-    assert res["/var/log/messages"]["postrotate"] == "/usr/bin/killall -HUP syslogd"
+    assert res["compress"].value is None
+    assert res["/var/log/messages"]["rotate"].value == 5
+    assert res["/var/log/messages"]["weekly"].value is None
+    assert res["/var/log/messages"]["postrotate"].value == "/usr/bin/killall -HUP syslogd"
 
 
 def xtest_logrotate_multikey():
     res = loads(EXAMPLE)
-    assert res["compress"] is None
-    assert res["/var/log/httpd/access.log"]["rotate"] == 5
-    assert res["/var/log/httpd/access.log"]["size"] == "100k"
-    assert res["/var/log/httpd/access.log"]["sharedscripts"] is None
+    assert res["compress"].value is None
+    assert res["/var/log/httpd/access.log"]["rotate"].value == 5
+    assert res["/var/log/httpd/access.log"]["size"].value == "100k"
+    assert res["/var/log/httpd/access.log"]["sharedscripts"].value is None
 
-    assert res["/var/log/httpd/error.log"]["rotate"] == 5
-    assert res["/var/log/httpd/error.log"]["size"] == "100k"
-    assert res["/var/log/httpd/error.log"]["sharedscripts"] is None
-    assert res["/var/log/news/*"]["postrotate"] == "kill -HUP 'cat /var/run/inn.pid'"
+    assert res["/var/log/httpd/error.log"]["rotate"].value == 5
+    assert res["/var/log/httpd/error.log"]["size"].value == "100k"
+    assert res["/var/log/httpd/error.log"]["sharedscripts"].value is None
+    assert res["/var/log/news/*"]["postrotate"].value == "kill -HUP 'cat /var/run/inn.pid'"

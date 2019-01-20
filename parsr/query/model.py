@@ -20,7 +20,7 @@ class Node:
     def value(self):
         if len(self.attrs) == 1:
             return self.attrs[0]
-        return self.attrs
+        return self.attrs or None
 
     @property
     def root(self):
@@ -32,6 +32,9 @@ class Node:
     @property
     def grandchildren(self):
         return list(chain.from_iterable(c.children for c in self.children))
+
+    def __contains__(self, key):
+        return len(self[key]) > 0
 
     def __len__(self):
         return len(self.children)
