@@ -149,15 +149,15 @@ blacklist {
 
 def test_multipath_example():
     res = loads(EXAMPLE)
-    assert res["defaults"]["user_friendly_names"] == "yes"
+    assert res["defaults"]["user_friendly_names"].value == "yes"
 
 
 def test_multipath_conf():
     res = loads(CONF)
-    assert res["blacklist"]["device"][0]["product"] == "3S42"
+    assert res["blacklist"]["device"][0]["product"].value == "3S42"
 
 
 def xtest_multipath_conf_info():
     res = loads(MULTIPATH_CONF_INFO)
-    assert res["defaults"]["path_selector"] == "round-robin 0"
-    assert res["multipaths"]["multipath"][1]["wwid"] == "1DEC_____321816758474"
+    assert res["defaults"]["path_selector"].value == "round-robin 0"
+    assert res["multipaths"]["multipath"][1]["wwid"].value == "1DEC_____321816758474"
