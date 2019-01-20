@@ -2,7 +2,7 @@ import string
 from parsr import (EOF, Forward, LeftCurly, Lift, LineEnd, RightCurly, Many,
                    Number, OneLineComment, SemiColon, SingleQuotedString,
                    skip_none, String, WS, WSChar)
-from parsr.query.model import Node
+from parsr.query.model import Entry
 
 
 def loads(data):
@@ -15,8 +15,8 @@ def load(f):
 
 def to_node(name, attrs, body):
     if body == ";":
-        return Node(name=name, attrs=attrs)
-    return Node(name=name, attrs=attrs, children=body)
+        return Entry(name=name, attrs=attrs)
+    return Entry(name=name, attrs=attrs, children=body)
 
 
 Stmt = Forward()

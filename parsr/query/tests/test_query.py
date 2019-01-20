@@ -1,5 +1,5 @@
 from parsr.query.dsl import all_, any_, lt, startswith, endswith
-from parsr.query.model import from_dict, Node
+from parsr.query.model import from_dict, Entry
 
 
 simple_data = {
@@ -10,16 +10,16 @@ simple_data = {
 }
 
 
-complex_tree = Node(name="root",
+complex_tree = Entry(name="root",
                     attrs=[1, 2, 3, 4],
                     children=[
-                        Node(name="child", attrs=[1, 1, 2]),
-                        Node(name="child", attrs=[1, 1, 2, 3, 5]),
-                        Node(name="child", attrs=[1, 1, 3, 5, 9]),
-                        Node(name="dog", attrs=["woof"], children=[
-                            Node(name="puppy", attrs=["smol"]),
-                            Node(name="puppy", attrs=["fluffy"]),
-                            Node(name="kitten", attrs=["wut"]),
+                        Entry(name="child", attrs=[1, 1, 2]),
+                        Entry(name="child", attrs=[1, 1, 2, 3, 5]),
+                        Entry(name="child", attrs=[1, 1, 3, 5, 9]),
+                        Entry(name="dog", attrs=["woof"], children=[
+                            Entry(name="puppy", attrs=["smol"]),
+                            Entry(name="puppy", attrs=["fluffy"]),
+                            Entry(name="kitten", attrs=["wut"]),
                         ])
                     ])
 

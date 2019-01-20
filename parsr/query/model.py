@@ -1,8 +1,30 @@
+"""
+This module allows parsers to construct data with a common representation that
+is compatible with parsr.query.dsl.
+
+The model allows duplicate keys, and it allows values with *unnamed* attributes
+and recursive substructure. This is a common model for many kinds of
+configuration.
+
+Simple key/value pairs can be represented as a key with a value that has a
+single attribute. Most dictionary shapes used to represent configuration are
+made of keys with simple values (key/single attr), lists of simple values
+(key/multiple attrs), or nested dictionaries (key/substructure).
+
+Something like XML allows duplicate keys, and it allows values to have named
+attributes and substructure. This module doesn't cover that case.
+
+`Entry` and `Result` have overloaded __getitem__ functions that respond to
+queries from the parsr.query.dsl module. This allows their instances to be
+accessed like simple dictionaries, but the key passed to `[]` is converted to a
+query of all child instances instead of a simple lookup. See `parsr.query.dsl`
+for more details.
+"""
 from itertools import chain
 from parsr.query.dsl import desugar
 
 
-class Node:
+class Entry:
     def __init__(self, name=None, attrs=None, children=None):
         self.name = name
         self.attrs = attrs or []
@@ -46,10 +68,10 @@ class Node:
         return Result(children=[c for c in self.children if query.test(c)])
 
     def __repr__(self):
-        return f"Node('{self.name}')"
+        return f"Entry('{self.name}')"
 
 
-class Result(Node):
+class Result(Entry):
     @property
     def string_value(self):
         v = self.value
@@ -74,17 +96,17 @@ def from_dict(orig):
         result = []
         for k, v in d.items():
             if isinstance(v, dict):
-                result.append(Node(name=k, children=inner(v)))
+                result.append(Entry(name=k, children=inner(v)))
             elif isinstance(v, list):
                 res = [from_dict(i) if isinstance(i, dict) else i for i in v]
                 if res:
-                    if isinstance(res[0], Node):
-                        result.append(Node(name=k, children=res))
+                    if isinstance(res[0], Entry):
+                        result.append(Entry(name=k, children=res))
                     else:
-                        result.append(Node(name=k, attrs=res))
+                        result.append(Entry(name=k, attrs=res))
                 else:
-                    result.append(Node(name=k))
+                    result.append(Entry(name=k))
             else:
-                result.append(Node(name=k, attrs=[v]))
+                result.append(Entry(name=k, attrs=[v]))
         return result
-    return Node(children=inner(orig))
+    return Entry(children=inner(orig))

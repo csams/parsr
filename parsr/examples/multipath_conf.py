@@ -6,11 +6,11 @@ import string
 from parsr import (EOF, Forward, LeftCurly, Lift, Literal, LineEnd, RightCurly,
                    Many, Number, OneLineComment, skip_none, String,
                    QuotedString, WS, WSChar)
-from parsr.query.model import Node
+from parsr.query.model import Entry
 
 
 def loads(data):
-    return Node(children=Top(data)[0])
+    return Entry(children=Top(data)[0])
 
 
 def load(f):
@@ -19,8 +19,8 @@ def load(f):
 
 def to_node(name, rest):
     if isinstance(rest, list):
-        return Node(name=name, children=rest)
-    return Node(name=name, attrs=rest)
+        return Entry(name=name, children=rest)
+    return Entry(name=name, attrs=rest)
 
 
 Stmt = Forward()

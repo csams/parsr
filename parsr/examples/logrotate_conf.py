@@ -2,11 +2,11 @@ import string
 from parsr import (AnyChar, Choice, EOF, EOL, Forward, LeftCurly, LineEnd, Literal, Many,
                    Number, OneLineComment, Opt, QuotedString, RightCurly,
                    skip_none, String, WS, WSChar)
-from parsr.query.model import Node
+from parsr.query.model import Entry
 
 
 def loads(data):
-    return Node(children=Top(data)[0])
+    return Entry(children=Top(data)[0])
 
 
 def load(f):
@@ -19,9 +19,9 @@ def to_nodes(x):
         name, attrs, body = i
         if body:
             for n in [name] + attrs:
-                ret.append(Node(name=n, children=body))
+                ret.append(Entry(name=n, children=body))
         else:
-            ret.append(Node(name=name, attrs=attrs))
+            ret.append(Entry(name=name, attrs=attrs))
     return ret
 
 

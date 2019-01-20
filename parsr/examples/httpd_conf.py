@@ -2,11 +2,11 @@ import string
 from parsr import (Char, EOF, EOL, EndTagName, Forward, FS, GT, LT, Letters,
                    Lift, LineEnd, Many, Number, OneLineComment, QuotedString,
                    skip_none, StartTagName, String, WS, WSChar)
-from parsr.query.model import Node
+from parsr.query.model import Entry
 
 
 def loads(data):
-    return Node(children=Top(data)[0])
+    return Entry(children=Top(data)[0])
 
 
 def load(f):
@@ -14,12 +14,12 @@ def load(f):
 
 
 def simple_to_node(name, attrs):
-    return Node(name=name, attrs=attrs)
+    return Entry(name=name, attrs=attrs)
 
 
 def complex_to_node(tag, children):
     name, attrs = tag
-    return Node(name=name, attrs=attrs, children=children)
+    return Entry(name=name, attrs=attrs, children=children)
 
 
 Complex = Forward()

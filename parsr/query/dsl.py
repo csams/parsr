@@ -1,42 +1,44 @@
+"""
+"""
 import operator
 from functools import partial
 
 from parsr.query.boolean import All, Any, Boolean, Lift, TRUE, lift2
 
 
-class NodeQuery:
-    def __init__(self, query):
-        self.query = query
+class EntryQuery:
+    def __init__(self, expr):
+        self.expr = expr
 
     def test(self, node):
-        return self.query.test(node)
+        return self.expr.test(node)
 
 
-class NameQuery(NodeQuery):
+class NameQuery(EntryQuery):
     def test(self, node):
-        return self.query.test(node.name)
+        return self.expr.test(node.name)
 
 
-class AttrQuery(NodeQuery):
+class AttrQuery(EntryQuery):
     pass
 
 
 class AllAttrQuery(AttrQuery):
     def test(self, n):
-        return all(self.query.test(a) for a in n.attrs)
+        return all(self.expr.test(a) for a in n.attrs)
 
 
 class AnyAttrQuery(AttrQuery):
     def test(self, n):
-        return any(self.query.test(a) for a in n.attrs)
+        return any(self.expr.test(a) for a in n.attrs)
 
 
-def any_(*args):
-    return AnyAttrQuery(Any(*[desugar_attr(a) for a in args]))
+def any_(*exprs):
+    return AnyAttrQuery(Any(*[desugar_attr(e) for e in exprs]))
 
 
-def all_(*args):
-    return AllAttrQuery(All(*[desugar_attr(a) for a in args]))
+def all_(*exprs):
+    return AllAttrQuery(All(*[desugar_attr(e) for e in exprs]))
 
 
 def desugar_name(q):
