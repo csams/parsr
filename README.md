@@ -13,8 +13,7 @@ To see how a handwritten parser might evolve to something like this project,
 check out the [lesson](https://github.com/csams/parsr/blob/master/parsr/lesson).
 
 [parser.query](https://github.com/csams/parsr/blob/master/parsr/query) contains 
-a common model that parsrs can generate that integrates with a robust query
-system.
+a common model that parsers can generate to integrate with a query system.
 
 ## Examples
 * [Arithmetic](https://github.com/csams/parsr/blob/master/parsr/examples/arith.py)

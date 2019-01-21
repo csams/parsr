@@ -29,10 +29,10 @@ lt = lift2(operator.lt)  # operator.lt is lt(a, b) == (a < b)
 gt = lift2(operator.gt)  # operator.gt is gt(a, b) == (a > b)
 
 gt_five = gt(5)  # creates a function of one argument that when called
-                 # returns gt(x, 5)
+                 # returns operator.gt(x, 5)
 
 lt_ten = lt(10)  # creates a function of one argument that when called
-                 # returns lt(x, 5)
+                 # returns operator.lt(x, 5)
 
 gt_five_and_lt_10 = gt(5) & lt(10)
 ```
@@ -103,7 +103,10 @@ class Lift(Boolean):
         self.args = args
 
     def test(self, value):
-        return self.func(value, *self.args)
+        try:
+            return self.func(value, *self.args)
+        except Exception:
+            return False
 
 
 class CaselessLift(Lift):
