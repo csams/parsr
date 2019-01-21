@@ -6,8 +6,8 @@ are supported. Sections inherit keys from the `[DEFAULT]` section. All keys are
 converted to lower case. Variable interpolation is not supported.
 """
 import string
-from parsr import (Char, EOF, EOL, LeftBracket, LineEnd, Many, Number,
-                   OneLineComment, Opt, Parser, RightBracket, String,
+from parsr import (EOF, HangingString, InSet, LeftBracket, LineEnd, Many,
+                   Number, OneLineComment, Opt, RightBracket, String,
                    WithIndent, WS, WSChar)
 
 
@@ -29,30 +29,6 @@ def load(f):
     return loads(f.read())
 
 
-class HangingString(Parser):
-    def __init__(self, chars):
-        super().__init__()
-        self.add_child(String(chars) << (EOL | EOF))
-
-    def process(self, pos, data, ctx):
-        old = pos
-        results = []
-        while True:
-            try:
-                if ctx.col(pos) > ctx.indents[-1]:
-                    pos, res = self.children[0].process(pos, data, ctx)
-                    results.append(res)
-                else:
-                    pos = old
-                    break
-                old = pos
-                pos, _ = WS.process(pos, data, ctx)
-            except Exception:
-                break
-        ret = " ".join(results)
-        return pos, ret
-
-
 def to_dict(x):
     x = [i for i in x if i is not None]
     d = {}
@@ -68,7 +44,8 @@ def to_dict(x):
 
 
 header_chars = (set(string.printable) - set(string.whitespace) - set("[]"))
-key_chars = header_chars - set("=:")
+sep_chars = set("=:")
+key_chars = header_chars - sep_chars
 value_chars = set(string.printable) - set("\n\r")
 
 Num = Number & (WSChar | LineEnd)
@@ -76,7 +53,7 @@ LeftEnd = (WS + LeftBracket + WS)
 RightEnd = (WS + RightBracket + WS)
 Header = LeftEnd >> String(header_chars) << RightEnd
 Key = WS >> String(key_chars) << WS
-Sep = Char("=") | Char(":")
+Sep = InSet(sep_chars)
 Value = WS >> (Num | HangingString(value_chars))
 KVPair = WithIndent(Key + Opt(Sep + Value, default=[None, None])).map(lambda a: (a[0], a[1][1]))
 Comment = (WS >> (OneLineComment("#") | OneLineComment(";")).map(lambda x: None))

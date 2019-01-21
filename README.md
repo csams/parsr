@@ -5,18 +5,20 @@ that might require knowledge of indentation or matching tags.
 It contains a small set of combinators that perform recursive decent with
 backtracking. Fancy tricks like rewriting left recursions and optimizations like
 [packrat](https://pdos.csail.mit.edu/~baford/packrat/thesis/thesis.pdf) are not
-implemented since the goal is a library that's an order of magnitude smaller
-than pyparsing yet still sufficient for parsing non-standard configuration
-files.
+implemented since the goal is a library that's nearly an order of magnitude
+smaller than pyparsing yet still sufficient for parsing non-standard
+configuration files. It also includes a generic data model that parsers can
+target to take advantage of an embedded query system.
 
 To see how a handwritten parser might evolve to something like this project,
 check out the [lesson](https://github.com/csams/parsr/blob/master/parsr/lesson).
 
 [parser.query](https://github.com/csams/parsr/blob/master/parsr/query) contains 
-a common model that parsers can generate to integrate with a query system.
+the common data model and query system.
 
 ## Examples
 * [Arithmetic](https://github.com/csams/parsr/blob/master/parsr/examples/arith.py)
+* [Generic Key/Value Pair configuration](https://github.com/csams/parsr/blob/master/parsr/examples/kvpairs.py)
 * [INI configuration](https://github.com/csams/parsr/blob/master/parsr/examples/iniparser.py) is an example of significant indentation.
 * [json](https://github.com/csams/parsr/blob/master/parsr/examples/json_parser.py)
 * [httpd configuration](https://github.com/csams/parsr/blob/master/parsr/examples/httpd_conf.py) is an example of matching starting and ending tags.

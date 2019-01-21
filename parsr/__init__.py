@@ -442,7 +442,7 @@ class EnclosedComment(Parser):
 class OneLineComment(Parser):
     def __init__(self, s):
         super().__init__()
-        p = (Literal(s) >> AnyChar.until(EOL | EOF)).map(lambda x: "".join(x))
+        p = Literal(s) >> Opt(String(set(string.printable) - set("\r\n")), "")
         self.add_child(p)
 
     def process(self, pos, data, ctx):
@@ -457,6 +457,30 @@ class WithIndent(Wrapper):
             return self.children[0].process(new, data, ctx)
         finally:
             ctx.indents.pop()
+
+
+class HangingString(Parser):
+    def __init__(self, chars):
+        super().__init__()
+        self.add_child(String(chars) << (EOL | EOF))
+
+    def process(self, pos, data, ctx):
+        old = pos
+        results = []
+        while True:
+            try:
+                if ctx.col(pos) > ctx.indents[-1]:
+                    pos, res = self.children[0].process(pos, data, ctx)
+                    results.append(res)
+                else:
+                    pos = old
+                    break
+                old = pos
+                pos, _ = WS.process(pos, data, ctx)
+            except Exception:
+                break
+        ret = " ".join(results)
+        return pos, ret
 
 
 class StartTagName(Wrapper):
@@ -489,6 +513,7 @@ def skip_none(x):
 EOF = EOF()
 EOL = InSet("\n\r") % "EOL"
 LineEnd = Wrapper(EOL | EOF)
+EQ = Char("=")
 LT = Char("<")
 GT = Char(">")
 FS = Char("/")
