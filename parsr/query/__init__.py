@@ -56,9 +56,9 @@ class Entry:
     def grandchildren(self):
         return list(chain.from_iterable(c.children for c in self.children))
 
-    def find_all(self, *queries, roots=False):
+    def find(self, *queries, roots=False):
         query = compile_queries(*queries)
-        return find_all(query, self.children, roots=roots)
+        return find(query, self.children, roots=roots)
 
     def __contains__(self, key):
         return len(self[key]) > 0
@@ -93,9 +93,9 @@ class Result(Entry):
             return self.children[0].value
         raise Exception("More than one value to return.")
 
-    def find_all(self, *queries, roots=False):
+    def find(self, *queries, roots=False):
         query = compile_queries(*queries)
-        return find_all(query, self.grandchildren, roots=roots)
+        return find(query, self.grandchildren, roots=roots)
 
     def __getitem__(self, query):
         if isinstance(query, (int, slice)):
@@ -228,7 +228,7 @@ def compile_queries(*queries):
     return inner
 
 
-def find_all(query, nodes, roots=False):
+def find(query, nodes, roots=False):
     results = []
     for n in flatten(nodes):
         results.extend(query([n]))

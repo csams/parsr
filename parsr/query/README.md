@@ -109,35 +109,35 @@ conf["VirtualHost", startswith("128") | startswith("129")]
 conf["VirtualHost", ~startswith("128")]
 ```
 
-## find_all
+## find
 Brackets work great when you know what level of the configuration you need to
-look in, but what if you don't? `find_all` sends a query all over the
+look in, but what if you don't? `find` sends a query all over the
 configuration looking for matches.
 ```python
-log_levels = conf.find_all("LogLevel")
+log_levels = conf.find("LogLevel")
 ```
 
-Passing multiple arguments to `find_all` is like using a separate set of
+Passing multiple arguments to `find` is like using a separate set of
 brackets. This will find all `LogLevel` entries immediately beneath all
 `VirtualHost` entries regardless of where the VirtualHost entries exist in the
 configuration:
 ```python
-log_levels = conf.find_all("VirtualHost", "LogLevel")
+log_levels = conf.find("VirtualHost", "LogLevel")
 ```
 
 If you want to constrain attributes in addition to names, use tuples:
 ```python
-log_levels = conf.find_all(("VirtualHost", startswith("128")), "LogLevel")
+log_levels = conf.find(("VirtualHost", startswith("128")), "LogLevel")
 ```
 
-You can also chain the `find_all` calls. This will find all `LogLevel` entries
+You can also chain the `find` calls. This will find all `LogLevel` entries
 anywhere beneath any `VirtualHost` entry.
 ```python
-log_levels = conf.find_all("VirtualHost").find_all("LogLevel")
+log_levels = conf.find("VirtualHost").find("LogLevel")
 ```
 
 If you want to search for structure somewhere in the tree but are interested in
-the root entries that contain the matches, pass `roots=True` to `find_all`.
+the root entries that contain the matches, pass `roots=True` to `find`.
 
 ## Lifting
 To create your own predicates that can be combined with other predicates using

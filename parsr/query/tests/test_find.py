@@ -15,14 +15,19 @@ complex_tree = Entry(name="root",
                     ])
 
 
-def test_find_all_leaves():
-    res = complex_tree.find_all("puppy")
+def test_find_leaves():
+    res = complex_tree.find("puppy")
     assert len(res) == 2
     assert res[0].name == "puppy"
     assert res[1].name == "puppy"
 
 
-def test_find_all_roots():
-    res = complex_tree.find_all("puppy", roots=True)
+def test_find_roots():
+    res = complex_tree.find("puppy", roots=True)
     assert len(res) == 1
     assert res[0].name == "dog"
+
+
+def test_find_chain():
+    res = complex_tree.find("dog").find("puppy")
+    assert len(res) == 2
