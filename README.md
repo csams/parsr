@@ -18,9 +18,9 @@ the common data model and query system.
 
 ## Install
 1. Ensure python3.6 or python3.7 is installed.
-2. `python3.7 -m venv myproject` && cd myproject
-3. source bin/activate
-4. pip install parsr
+2. `python3.7 -m venv myproject && cd myproject`
+3. `source bin/activate`
+4. `pip install parsr`
 
 ## Examples
 * [Arithmetic](https://github.com/csams/parsr/blob/master/parsr/examples/arith.py)
@@ -59,9 +59,7 @@ val = vowel("y")  # raises an exception
 ```
 
 ### String
-Match zero or more characters in a set. Matching is greedy.
-
-String requires at least one occurence of the characters in its set.
+Match one or more characters in a set. Matching is greedy.
 ```python
 vowels = String("aeiou")
 val = vowels("a")            # returns "a"
@@ -69,7 +67,7 @@ val = vowels("u")            # returns "u"
 val = vowels("aaeiouuoui")   # returns "aaeiouuoui"
 val = vowels("uoiea")        # returns "uoiea"
 val = vowels("oouieaaea")    # returns "oouieaaea"
-val = vowels("ga") # raises an exception
+val = vowels("ga")           # raises an exception
 ```
 
 ### Literal
@@ -152,8 +150,8 @@ val = abc("abc")  # produces ["a", "b", "c"]
 ```
 
 ### Choice
-Accept one of a list of alternatives. Alternatives are checked from left to
-right, and checking stops with the first one to succeed.
+Accept one of several alternatives. Alternatives are checked from left to right,
+and checking stops with the first one to succeed.
 
 Choices are optimized so only the first object maintains a list of alternatives.
 Be aware that using a choice object as an element in other choices will
