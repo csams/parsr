@@ -5,10 +5,9 @@ that might require knowledge of indentation or matching tags.
 It contains a small set of combinators that perform recursive decent with
 backtracking. Fancy tricks like rewriting left recursions and optimizations like
 [packrat](https://pdos.csail.mit.edu/~baford/packrat/thesis/thesis.pdf) are not
-implemented since the goal is a library that's nearly an order of magnitude
-smaller than pyparsing yet still sufficient for parsing non-standard
-configuration files. It also includes a generic data model that parsers can
-target to take advantage of an embedded query system.
+implemented since the goal is a library that's small yet sufficient for parsing
+non-standard configuration files. It also includes a generic data model that
+parsers can target to take advantage of an embedded query system.
 
 To see how a handwritten parser might evolve to something like this project,
 check out the [lesson](https://github.com/csams/parsr/blob/master/parsr/lesson).
