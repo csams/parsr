@@ -8,7 +8,7 @@ number of unnamed `attrs`, and any number of `children`. The
 is an example of how to construct a model using it.
 
 ## Queries
-A a configuration file is normally a nested structure, and it is convenient to
+A configuration file is normally a nested structure, and it is convenient to
 navigate it as if it was a set of nested dictionaries. For example, to get a top
 level `IfModule` of an httpd configuration, you might do the following:
 
@@ -29,13 +29,13 @@ cust_log = conf["IfModule"]["CustomLog"]
 ```
 
 you'll get a `Result` whose children are all the entries named `CustomLog`
-beneath all of the top level entries named `IfModule`.
+immediately beneath all of the top level entries named `IfModule`.
 
-Each level of brackets represents a query against the corresponding level of the
+Each level of brackets represents a query against the corresponding level in the
 configuration, and brackets on the left filter what's available for brackets on
 the right to query against.
 
-Since entries in the brackets are queries, they can be more than simple values.
+Queries can be more than simple values.
 
 ```python
 dirs = conf["Directory", "/"]
@@ -45,9 +45,10 @@ The value in the first position matches against the name. Values after that
 require any attribute of an entry matching the name query to be equal to them.
 If multiple values come after the name, any attribute must match any of them.
 
-The predicates can be more than simple values. This will get all entries at the
-top level with a name that starts with "Dir" and an attribute that starts with
-"/var/www".
+This example will get all entries at the top level with a name that starts with
+"Dir" and an attribute that starts with "/var/www". It shows that queries are
+actually predicate objects that act on the name or attributes of configuration
+entries, and simple values are translated into equality predicates for you.
 ```python
 from parsr.query import startswith
 
@@ -65,10 +66,11 @@ Remember, the first brackets query all nodes at the top level. The second
 brackets query the children of those results. A third set of brackets would
 query the children of *those* results, and so on.
 
-Brackets can accept simple values, single argument predicate functions, and functions that
-have been "lifted" using the [parser.query.boolean](https://github.com/csams/parsr/blob/master/parsr/query/boolean.py)
-module. Lifted functions have the special property than they can be combined
-with other lifted functions to make compound queries.
+Brackets can accept simple values, single argument predicate functions, and
+predicate functions that have been "lifted" using the
+[parser.query.boolean](https://github.com/csams/parsr/blob/master/parsr/query/boolean.py)
+module. Lifted functions have the special property than they can be easily
+combined with other lifted functions to make compound queries.
 
 ## Combining Queries
 Lifted functions can be combined with logical connectives representing `and`,
@@ -93,14 +95,21 @@ Lifted functions can be combined with logical connectives representing `and`,
 * iendswith
 
 They can be connected in the following ways:
-* and: &
-* or: |
-* not: ~
+* and: `&`
+* or: `|`
+
+You can also negate:
+* not: `~`
 
 ```python
-conf[startswith("Vir") & endswith("Host")]  # basically get virtual hosts
-conf[startswith("Dir") | startswith("VirtualHost")] # get directories or virtual hosts
-conf[eq("Directory") | eq("VirtualHost")]  # get directories or virtual hosts
+# basically get virtual hosts
+conf[startswith("Vir") & endswith("Host")]
+
+# get directories or virtual hosts
+conf[startswith("Dir") | startswith("VirtualHost")]
+
+# get directories or virtual hosts
+conf[eq("Directory") | eq("VirtualHost")]
 
 # get virtual hosts with ips that start with 128 or 129.
 conf["VirtualHost", startswith("128") | startswith("129")]
@@ -111,21 +120,22 @@ conf["VirtualHost", ~startswith("128")]
 
 ## find
 Brackets work great when you know what level of the configuration you need to
-look in, but what if you don't? `find` sends a query all over the
-configuration looking for matches.
+look in, but what if you don't? `find` sends a query all over the configuration
+looking for matches. It returns the matching leaf nodes by default.
 ```python
 log_levels = conf.find("LogLevel")
 ```
 
-Passing multiple arguments to `find` is like using a separate set of
-brackets. This will find all `LogLevel` entries immediately beneath all
-`VirtualHost` entries regardless of where the VirtualHost entries exist in the
-configuration:
+Passing multiple arguments to `find` is like using a separate set of brackets.
+This will find all `LogLevel` entries immediately beneath all `VirtualHost`
+entries regardless of where the VirtualHost entries exist in the configuration:
 ```python
 log_levels = conf.find("VirtualHost", "LogLevel")
 ```
 
-If you want to constrain attributes in addition to names, use tuples:
+If you want to constrain attributes in addition to names, use tuples for a given
+argument position. Here, the first argument to `find` is a tuple, and the second
+argument is a simple value:
 ```python
 log_levels = conf.find(("VirtualHost", startswith("128")), "LogLevel")
 ```
@@ -140,12 +150,13 @@ If you want to search for structure somewhere in the tree but are interested in
 the root entries that contain the matches, pass `roots=True` to `find`.
 
 ## Lifting
-To create your own predicates that can be combined with other predicates using
-the connectors above, use the `lift` and `lift2` functions from `parsr.query`.
+To create your own predicates that can be combined using the connectors above,
+   use the `lift` and `lift2` functions from `parsr.query`.
 
 `lift` is for predicates that take a single value, which will be either an entry
 name or an entry attribute. `lift2` is for functions that need to be
-parameterized with a value. An example is `operator.eq` or `str.startswith`.
+parameterized with a value. An example of `lift2` is `operator.eq` or
+`str.startswith`.
 
 ```python
 def is_even(v):
