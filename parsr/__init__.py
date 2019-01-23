@@ -187,6 +187,15 @@ class Many(Wrapper):
         return pos, results
 
 
+class Many1(Many):
+    def process(self, pos, data, ctx):
+        pos, results = super().process(pos, data, ctx)
+        if len(results) == 0:
+            child = self.children[0]
+            raise Exception(f"Expected at least one {child}.")
+        return pos, results
+
+
 class Until(Parser):
     def __init__(self, parser, predicate):
         super().__init__()
