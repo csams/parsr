@@ -16,6 +16,12 @@ check out the [lesson](https://github.com/csams/parsr/blob/master/parsr/lesson).
 [parser.query](https://github.com/csams/parsr/blob/master/parsr/query) contains 
 the common data model and query system.
 
+## Install
+1. Ensure python3.6 or python3.7 is installed.
+2. `python3.7 -m venv myproject` && cd myproject
+3. source bin/activate
+4. pip install parsr
+
 ## Examples
 * [Arithmetic](https://github.com/csams/parsr/blob/master/parsr/examples/arith.py)
 * [Generic Key/Value Pair configuration](https://github.com/csams/parsr/blob/master/parsr/examples/kvpairs.py)
@@ -55,8 +61,7 @@ val = vowel("y")  # raises an exception
 ### String
 Match zero or more characters in a set. Matching is greedy.
 
-Since `String` can match zero occurences, it always succeeds. Keep this in mind
-when using it in a list of alternatives or with `FollowedBy` or `NotFollowedBy`.
+String requires at least one occurence of the characters in its set.
 ```python
 vowels = String("aeiou")
 val = vowels("a")            # returns "a"

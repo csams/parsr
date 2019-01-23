@@ -12,12 +12,11 @@ develop = set([
 if __name__ == "__main__":
     setup(
         name="parsr",
-        version="0.2.0",
+        version="0.2.1",
         description="Parsr is a simple parser combinator library in pure python.",
         long_description=open("README.md").read(),
         long_description_content_type='text/markdown',
         url="https://github.com/csams/parsr",
-        author="Chris Sams",
         author_email="cwsams@gmail.com",
         packages=find_packages(),
         package_data={'': ['LICENSE']},
@@ -29,7 +28,9 @@ if __name__ == "__main__":
             'Intended Audience :: Developers',
             'Natural Language :: English',
             'License :: OSI Approved :: Apache Software License',
-            'Programming Language :: Python :: 3.6'
+            'Programming Language :: Python',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7'
         ],
         include_package_data=True
     )
