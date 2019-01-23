@@ -12,12 +12,11 @@ develop = set([
 if __name__ == "__main__":
     setup(
         name="parsr",
-        version="0.2.1",
+        version="0.2.2",
         description="Parsr is a simple parser combinator library in pure python.",
         long_description=open("README.md").read(),
         long_description_content_type='text/markdown',
         url="https://github.com/csams/parsr",
-        author_email="cwsams@gmail.com",
         packages=find_packages(),
         package_data={'': ['LICENSE']},
         license='Apache 2.0',
