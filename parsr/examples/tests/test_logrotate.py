@@ -59,8 +59,10 @@ def test_logrotate_example():
     res = loads(EXAMPLE)
     assert res["compress"].value is None
     assert res["/var/log/messages"]["rotate"].value == 5
+    assert res["/var/log/messages"]["rotate"][0].lineno == 5
     assert res["/var/log/messages"]["weekly"].value is None
     assert res["/var/log/messages"]["postrotate"].value == "/usr/bin/killall -HUP syslogd"
+    assert res["/var/log/news/*"][0].lineno == 22
 
 
 def xtest_logrotate_multikey():

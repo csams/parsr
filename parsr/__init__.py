@@ -140,6 +140,26 @@ class Wrapper(Parser):
         return self.children[0].process(pos, data, ctx)
 
 
+class Mark:
+    def __init__(self, lineno, col, value):
+        self.lineno = lineno
+        self.col = col
+        self.value = value
+
+
+class PosMarker(Wrapper):
+    """
+    Save the line number and column of a non-terminal or terminal by
+    wrapping it in a PosMarker. The value of the parser that handled the input
+    as well as the initial input position will be returned as a Mark instance.
+    """
+    def process(self, pos, data, ctx):
+        lineno = ctx.line(pos) + 1
+        col = ctx.col(pos) + 1
+        pos, result = super().process(pos, data, ctx)
+        return pos, Mark(lineno, col, result)
+
+
 class Seq(Parser):
     def __init__(self, children):
         super().__init__()

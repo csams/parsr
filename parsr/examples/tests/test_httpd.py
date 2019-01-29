@@ -170,5 +170,7 @@ def test_httpd_conf_nest_one():
     assert len(val["IfModule"]) == 2
     assert len(val["IfModule", "mod_rewrite.c"]) == 1
     assert len(val["IfModule", "!php5_module"]) == 1
+    assert val["IfModule", "mod_rewrite.c"][0].lineno == 43
     assert val["LogLevel"].value == "warn"
+    assert val["LogLevel"][0].lineno == 46
     assert val[ieq("loglevel")].value == "warn"

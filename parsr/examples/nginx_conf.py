@@ -1,7 +1,7 @@
 import string
 from parsr import (EOF, Forward, LeftCurly, Lift, LineEnd, RightCurly, Many,
-                   Number, OneLineComment, SemiColon, SingleQuotedString,
-                   skip_none, String, WS, WSChar)
+                   Number, OneLineComment, PosMarker, SemiColon,
+                   SingleQuotedString, skip_none, String, WS, WSChar)
 from parsr.query import Entry
 
 
@@ -15,8 +15,8 @@ def load(f):
 
 def to_node(name, attrs, body):
     if body == ";":
-        return Entry(name=name, attrs=attrs)
-    return Entry(name=name, attrs=attrs, children=body)
+        return Entry(name=name.value, attrs=attrs, lineno=name.lineno)
+    return Entry(name=name.value, attrs=attrs, children=body, lineno=name.lineno)
 
 
 Stmt = Forward()
@@ -25,7 +25,7 @@ Comment = OneLineComment("#").map(lambda x: None)
 BeginBlock = WS >> LeftCurly << WS
 EndBlock = WS >> RightCurly << WS
 Bare = String(set(string.printable) - (set(string.whitespace) | set("#;{}'\"")))
-Name = WS >> String(string.ascii_letters + "_") << WS
+Name = WS >> PosMarker(String(string.ascii_letters + "_")) << WS
 Attr = WS >> (Num | Bare | SingleQuotedString) << WS
 Attrs = Many(Attr)
 Block = BeginBlock >> Many(Stmt).map(skip_none) << EndBlock

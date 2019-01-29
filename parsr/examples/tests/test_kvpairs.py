@@ -17,9 +17,9 @@ e = hello   # a value
 def test_kvpairs():
     d = loads(DATA)
     assert d
-    assert d["a"] == 15
-    assert d["b"] == "a string"
-    assert d["valueless"] is None
-    assert d["d"] == 1.14
-    assert d["+valueless"] is None
-    assert d["e"] == "hello"
+    assert d["a"].value == 15
+    assert d["b"].value == "a string"
+    assert d["valueless"].value is None
+    assert d["d"].value == 1.14
+    assert d["+valueless"].value is None
+    assert d["e"].value == "hello"

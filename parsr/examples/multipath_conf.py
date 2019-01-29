@@ -4,7 +4,7 @@ dictionaries.
 """
 import string
 from parsr import (EOF, Forward, LeftCurly, Lift, Literal, LineEnd, RightCurly,
-                   Many, Number, OneLineComment, skip_none, String,
+                   Many, Number, OneLineComment, PosMarker, skip_none, String,
                    QuotedString, WS, WSChar)
 from parsr.query import Entry
 
@@ -19,8 +19,8 @@ def load(f):
 
 def to_node(name, rest):
     if isinstance(rest, list):
-        return Entry(name=name, children=rest)
-    return Entry(name=name, attrs=rest)
+        return Entry(name=name.value, children=rest, lineno=name.lineno)
+    return Entry(name=name.value, attrs=[rest], lineno=name.lineno)
 
 
 Stmt = Forward()
@@ -30,7 +30,7 @@ Comment = (WS >> OneLineComment("#").map(lambda x: None))
 BeginBlock = (WS >> LeftCurly << WS)
 EndBlock = (WS >> RightCurly << WS)
 Bare = String(set(string.printable) - (set(string.whitespace) | set("#{}'\"")))
-Name = WS >> String(string.ascii_letters + "_") << WS
+Name = WS >> PosMarker(String(string.ascii_letters + "_")) << WS
 Value = WS >> (Num | NULL | QuotedString | Bare) << WS
 Block = BeginBlock >> Many(Stmt).map(skip_none) << EndBlock
 Stanza = (Lift(to_node) * Name * (Block | Value)) | Comment

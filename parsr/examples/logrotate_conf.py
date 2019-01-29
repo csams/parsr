@@ -1,7 +1,7 @@
 import string
-from parsr import (AnyChar, Choice, EOF, EOL, Forward, LeftCurly, LineEnd, Literal, Many,
-                   Number, OneLineComment, Opt, QuotedString, RightCurly,
-                   skip_none, String, WS, WSChar)
+from parsr import (AnyChar, Choice, EOF, EOL, Forward, LeftCurly, LineEnd,
+                   Literal, Many, Number, OneLineComment, Opt, PosMarker,
+                   QuotedString, RightCurly, skip_none, String, WS, WSChar)
 from parsr.query import Entry
 
 
@@ -18,10 +18,10 @@ def to_nodes(x):
     for i in x:
         name, attrs, body = i
         if body:
-            for n in [name] + attrs:
-                ret.append(Entry(name=n, children=body))
+            for n in [name.value] + attrs:
+                ret.append(Entry(name=n, children=body, lineno=name.lineno))
         else:
-            ret.append(Entry(name=name, attrs=attrs))
+            ret.append(Entry(name=name.value, attrs=attrs, lineno=name.lineno))
     return ret
 
 
@@ -31,7 +31,7 @@ Spaces = Many(WSChar)
 Bare = String(set(string.printable) - (set(string.whitespace) | set("#{}'\"")))
 Num = Number & (WSChar | LineEnd)
 Comment = OneLineComment("#").map(lambda x: None)
-ScriptStart = WS >> Choice([Literal(s) for s in scripts]) << WS
+ScriptStart = WS >> PosMarker(Choice([Literal(s) for s in scripts])) << WS
 ScriptEnd = Literal("endscript")
 Line = (WS >> AnyChar.until(EOL) << WS).map(lambda x: "".join(x))
 Lines = Line.until(ScriptEnd).map(lambda x: "\n".join(x))
@@ -39,7 +39,7 @@ Script = ScriptStart + Lines << ScriptEnd
 Script = Script.map(lambda x: [x[0], x[1], None])
 BeginBlock = WS >> LeftCurly << WS
 EndBlock = WS >> RightCurly
-First = (Bare | QuotedString) << Spaces
+First = PosMarker((Bare | QuotedString)) << Spaces
 Attr = Spaces >> (Num | Bare | QuotedString) << Spaces
 Rest = Many(Attr)
 Block = BeginBlock >> Many(Stanza).map(skip_none).map(to_nodes) << EndBlock

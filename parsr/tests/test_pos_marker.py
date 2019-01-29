@@ -1,11 +1,3 @@
-"""
-This module parses files that are simple lists of key values pairs. It supports
-keys without values and skips blank lines and single line comments.
-
-You can configure the k/v separator character and the comment start character.
-
-It returns a dictionary. The last definition for a given key sets its value.
-"""
 import operator
 import string
 from functools import reduce
@@ -13,13 +5,18 @@ from parsr import (EOF, EOL, InSet, LineEnd, Many, Number, OneLineComment, Opt,
                    PosMarker, skip_none, String, WS, WSChar)
 from parsr.query import Entry
 
+DATA = """
+# this is a config file
+a = 15
+b = a string
+valueless
+d = 1.14
 
-def loads(s, sep_chars="=:", comment_chars="#;"):
-    return KVPairs(sep_chars=sep_chars, comment_chars=comment_chars).loads(s)
-
-
-def load(f, sep_chars="=:", comment_chars="#;"):
-    return loads(f.read(), sep_chars=sep_chars, comment_chars=comment_chars)
+# another section
++valueless  # no value
+e = hello   # a value
+#
+"""
 
 
 def to_entry(ms):
@@ -53,3 +50,10 @@ class KVPairs:
 
     def load(self, f):
         return self.loads(f.read())
+
+
+def test_marker():
+    kvp = KVPairs()
+    res = kvp.loads(DATA)
+    assert res
+    assert res["+valueless"][0].lineno == 9
