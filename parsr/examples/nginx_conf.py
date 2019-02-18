@@ -13,7 +13,7 @@ def load(f):
     return loads(f.read())
 
 
-def to_node(name, attrs, body):
+def to_entry(name, attrs, body):
     if body == ";":
         return Entry(name=name.value, attrs=attrs, lineno=name.lineno)
     return Entry(name=name.value, attrs=attrs, children=body, lineno=name.lineno)
@@ -29,7 +29,7 @@ Name = WS >> PosMarker(String(string.ascii_letters + "_")) << WS
 Attr = WS >> (Num | Bare | SingleQuotedString) << WS
 Attrs = Many(Attr)
 Block = BeginBlock >> Many(Stmt).map(skip_none) << EndBlock
-Stanza = (Lift(to_node) * Name * Attrs * (Block | SemiColon)) | Comment
+Stanza = (Lift(to_entry) * Name * Attrs * (Block | SemiColon)) | Comment
 Stmt <= WS >> Stanza << WS
 Doc = Many(Stmt).map(skip_none)
 Top = Doc + EOF

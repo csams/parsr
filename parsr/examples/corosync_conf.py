@@ -16,7 +16,7 @@ def load(f):
     return loads(f.read())
 
 
-def to_node(name, rest):
+def to_entry(name, rest):
     if isinstance(rest, list):
         return Entry(name=name.value, children=rest, lineno=name.lineno)
     return Entry(name=name.value, attrs=[rest], lineno=name.lineno)
@@ -33,7 +33,7 @@ Bare = String(set(string.printable) - (set(string.whitespace) | set("#{}'\"")))
 Name = WS >> PosMarker(String(string.ascii_letters + "_")) << WS
 Value = WS >> (Num | NULL | QuotedString | Bare) << WS
 Block = BeginBlock >> Many(Stmt).map(skip_none) << EndBlock
-Stanza = (Lift(to_node) * Name * (Block | (Sep >> Value))) | Comment
+Stanza = (Lift(to_entry) * Name * (Block | (Sep >> Value))) | Comment
 Stmt <= WS >> Stanza << WS
 Doc = Many(Stmt).map(skip_none)
 Top = Doc + EOF

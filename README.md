@@ -1,6 +1,6 @@
 # parsr
-parsr is a little library for parsing simple, mostly context free grammars
-that might require knowledge of indentation or matching tags.
+parsr is a little library for parsing simple, mostly context free grammars that
+might require knowledge of indentation or matching tags.
 
 It contains a small set of combinators that perform recursive decent with
 backtracking. Fancy tricks like rewriting left recursions and optimizations like

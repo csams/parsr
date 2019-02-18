@@ -13,7 +13,7 @@ def load(f):
     return loads(f.read())
 
 
-def to_nodes(x):
+def to_entries(x):
     ret = []
     for i in x:
         name, attrs, body = i
@@ -42,8 +42,8 @@ EndBlock = WS >> RightCurly
 First = PosMarker((Bare | QuotedString)) << Spaces
 Attr = Spaces >> (Num | Bare | QuotedString) << Spaces
 Rest = Many(Attr)
-Block = BeginBlock >> Many(Stanza).map(skip_none).map(to_nodes) << EndBlock
+Block = BeginBlock >> Many(Stanza).map(skip_none).map(to_entries) << EndBlock
 Stmt = WS >> (Script | (First + Rest + Opt(Block))) << WS
 Stanza <= WS >> (Stmt | Comment) << WS
-Doc = Many(Stanza).map(skip_none).map(to_nodes)
+Doc = Many(Stanza).map(skip_none).map(to_entries)
 Top = Doc + EOF

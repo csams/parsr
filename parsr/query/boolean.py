@@ -18,10 +18,10 @@ even_and_positive(-2) == False
 even_and_positive(3) == False
 ```
 
-You can also lift two parameter functions to which you want to partially
-apply an argument. The arguments partially applied will be those *after*
-the first argument. The first argument is the value the function should
-evaluate when it's fully applied.
+You can also lift two parameter functions to which you want to partially apply
+an argument. The arguments partially applied will be those *after* the first
+argument. The first argument is the value the function should evaluate when
+it's fully applied.
 
 ```python
 import operator

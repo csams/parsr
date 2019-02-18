@@ -13,11 +13,11 @@ def load(f):
     return loads(f.read())
 
 
-def simple_to_node(name, attrs):
+def simple_to_entry(name, attrs):
     return Entry(name=name.value, attrs=attrs, lineno=name.lineno)
 
 
-def complex_to_node(tag, children):
+def complex_to_entry(tag, children):
     name, attrs = tag
     return Entry(name=name.value, attrs=attrs, children=children, lineno=name.lineno)
 
@@ -35,8 +35,8 @@ Attr = AttrStart >> (Num | BareAttr | QuotedString) << AttrEnd
 Attrs = Many(Attr)
 StartTag = (WS + LT) >> (StartName + Attrs) << (GT + WS)
 EndTag = (WS + LT + FS) >> EndName << (GT + WS)
-Simple = WS >> (Lift(simple_to_node) * PosMarker(Letters) * Attrs) << WS
+Simple = WS >> (Lift(simple_to_entry) * PosMarker(Letters) * Attrs) << WS
 Stanza = Simple | Complex | Comment
-Complex <= (Lift(complex_to_node) * StartTag * Many(Stanza).map(skip_none)) << EndTag
+Complex <= (Lift(complex_to_entry) * StartTag * Many(Stanza).map(skip_none)) << EndTag
 Doc = Many(Stanza).map(skip_none)
 Top = Doc + EOF

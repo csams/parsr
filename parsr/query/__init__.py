@@ -26,12 +26,13 @@ from parsr.query.boolean import All, Any, Boolean, lift, lift2, TRUE
 
 
 class Entry:
-    def __init__(self, name=None, attrs=None, children=None, lineno=None):
+    def __init__(self, name=None, attrs=None, children=None, lineno=None, src=None):
         self.name = name
         self.attrs = attrs or []
         self.children = children or []
         self.parent = None
         self.lineno = lineno
+        self.src = src
         for c in self.children:
             c.parent = self
 

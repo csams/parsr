@@ -47,11 +47,12 @@ def render(tree):
 
 
 class Ctx:
-    def __init__(self, lines):
+    def __init__(self, lines, src=None):
         self.error_pos = -1
         self.error_msg = None
         self.indents = []
         self.tags = []
+        self.src = src
         self.lines = [i for i, x in enumerate(lines) if x == "\n"]
 
     def set(self, pos, msg):
@@ -112,10 +113,10 @@ class Parser(Node):
         self.name = name
         return self
 
-    def __call__(self, data):
+    def __call__(self, data, src=None):
         data = list(data)
         data.append(None)  # add a terminal so we don't overrun
-        ctx = Ctx(data)
+        ctx = Ctx(data, src=src)
         ex = None
         try:
             _, ret = self.process(0, data, ctx)
