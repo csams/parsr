@@ -1,6 +1,5 @@
 """
-This module allows parsers to construct data with a common representation that
-is compatible with parsr.query.dsl.
+This module contains a query dsl and data model for parsers to target.
 
 The model allows duplicate keys, and it allows values with *unnamed* attributes
 and recursive substructure. This is a common model for many kinds of
@@ -14,10 +13,9 @@ made of keys with simple values (key/single attr), lists of simple values
 Something like XML allows duplicate keys, and it allows values to have named
 attributes and substructure. This module doesn't cover that case.
 
-`Entry` and `Result` have overloaded __getitem__ functions that respond to
-queries from the parsr.query.dsl module. This allows their instances to be
-accessed like simple dictionaries, but the key passed to `[]` is converted to a
-query of all child instances instead of a simple lookup.
+`Entry` and `Result` have overloaded __getitem__ functions that allow their
+instances to be accessed like simple dictionaries, but the key passed to `[]`
+is converted to a query of all child instances instead of a simple lookup.
 """
 import operator
 from functools import partial
