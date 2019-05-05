@@ -431,10 +431,11 @@ class Literal(Parser):
 
 
 class String(Parser):
-    def __init__(self, chars, echars=None):
+    def __init__(self, chars, echars=None, min_length=1):
         super().__init__()
         self.chars = set(chars)
         self.echars = set(echars) if echars else set()
+        self.min_length = min_length
 
     def process(self, pos, data, ctx):
         results = []
@@ -450,8 +451,8 @@ class String(Parser):
             else:
                 break
             p = data[pos]
-        if not results:
-            msg = f"Expected one of {self.chars}."
+        if len(results) < self.min_length:
+            msg = f"Expected {self.min_length} of {self.chars}."
             ctx.set(old, msg)
             raise Exception(msg)
         return pos, "".join(results)

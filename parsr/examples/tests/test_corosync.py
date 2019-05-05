@@ -84,9 +84,53 @@ quorum {
 }
 """.strip()
 
+COROSYNC_CONF = """
+totem {
+    version: 2
+    secauth: off
+    cluster_name: tripleo_cluster
+    transport: udpu
+    token: 10000
+}
 
-def test_corosync_conf():
+nodelist {
+    node {
+        ring0_addr: overcloud-controller-0
+        nodeid: 1
+    }
+
+    node {
+        ring0_addr: overcloud-controller-1
+        nodeid: 2
+    }
+
+    node {
+        ring0_addr: overcloud-controller-2
+        nodeid: 3
+    }
+}
+
+quorum {
+    provider: corosync_votequorum
+}
+
+logging {
+    to_logfile: yes
+    logfile: /var/log/cluster/corosync.log
+    to_syslog: yes
+}
+""".strip()
+
+
+def test_corosync_data():
     res = loads(DATA)
     assert res["totem"]["version"].value == 2
     assert res["totem"]["interface"]["bindnetaddr"].value == "192.168.1.0"
     assert len(res["quorum"]) == 1
+
+
+def test_corosync_conf():
+    conf = loads(COROSYNC_CONF)
+    assert conf['totem']['token'][0].value == 10000
+    assert conf['quorum']['provider'][0].value == 'corosync_votequorum'
+    assert conf['nodelist']['node']['nodeid'][-1].value == 3
