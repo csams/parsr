@@ -2,7 +2,7 @@ import string
 from parsr import (AnyChar, Choice, EOF, EOL, Forward, LeftCurly, LineEnd,
                    Literal, Many, Number, OneLineComment, Opt, PosMarker,
                    QuotedString, RightCurly, skip_none, String, WS, WSChar)
-from parsr.query import Entry
+from parsr.query import Directive, Entry, Section
 
 
 def loads(data):
@@ -19,9 +19,10 @@ def to_entries(x):
         name, attrs, body = i
         if body:
             for n in [name.value] + attrs:
-                ret.append(Entry(name=n, children=body, lineno=name.lineno))
+                ret.append(Section(name=n, children=body, lineno=name.lineno))
         else:
-            ret.append(Entry(name=name.value, attrs=attrs, lineno=name.lineno))
+            attrs = [attrs] if not isinstance(attrs, list) else attrs
+            ret.append(Directive(name=name.value, attrs=attrs, lineno=name.lineno))
     return ret
 
 

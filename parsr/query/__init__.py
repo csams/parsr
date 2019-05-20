@@ -1,5 +1,6 @@
 """
-This module contains a query dsl and data model for parsers to target.
+This module allows parsers to construct data with a common representation that
+is compatible with parsr.query.
 
 The model allows duplicate keys, and it allows values with *unnamed* attributes
 and recursive substructure. This is a common model for many kinds of
@@ -13,17 +14,44 @@ made of keys with simple values (key/single attr), lists of simple values
 Something like XML allows duplicate keys, and it allows values to have named
 attributes and substructure. This module doesn't cover that case.
 
-`Entry` and `Result` have overloaded __getitem__ functions that allow their
-instances to be accessed like simple dictionaries, but the key passed to `[]`
-is converted to a query of all child instances instead of a simple lookup.
+`Entry` and `Result` have overloaded __getitem__ functions that respond to
+queries from the parsr.query module. This allows their instances to be accessed
+like simple dictionaries, but the key passed to `[]` is converted to a query of
+immediate child instances instead of a simple lookup.
 """
 import operator
 from functools import partial
 from itertools import chain
-from parsr.query.boolean import All, Any, Boolean, lift, lift2, TRUE
+from .boolean import All, Any, Boolean, lift, lift2, TRUE
 
 
-class Entry:
+def pretty_format(root, indent=4):
+    results = []
+
+    def sep():
+        if results and results[-1] != "":
+            results.append("")
+
+    def inner(d, prefix=""):
+        if isinstance(d, Directive):
+            results.append(prefix + d.name + ": " + d.string_value)
+        elif isinstance(d, Section):
+            sep()
+            header = d.name if not d.attrs else " ".join([d.name, d.string_value])
+            results.append(prefix + "[" + header + "]")
+            prep = prefix + (" " * indent)
+            for c in d.children:
+                inner(c, prep)
+            sep()
+        else:
+            for c in d.children:
+                inner(c, prefix)
+
+    inner(root)
+    return results
+
+
+class Entry(object):
     def __init__(self, name=None, attrs=None, children=None, lineno=None, src=None):
         self.name = name
         self.attrs = attrs or []
@@ -34,6 +62,14 @@ class Entry:
         for c in self.children:
             c.parent = self
 
+    def __getattr__(self, name):
+        return getattr(self.src, name)
+
+    @property
+    def line(self):
+        if self.src is not None:
+            return self.src.content[self.lineno - 1]
+
     @property
     def string_value(self):
         t = " ".join(["%s"] * len(self.attrs))
@@ -43,7 +79,7 @@ class Entry:
     def value(self):
         if len(self.attrs) == 1:
             return self.attrs[0]
-        return self.attrs or None
+        return self.string_value if len(self.attrs) > 1 else None
 
     @property
     def root(self):
@@ -56,9 +92,32 @@ class Entry:
     def grandchildren(self):
         return list(chain.from_iterable(c.children for c in self.children))
 
-    def find(self, *queries, roots=False):
+    def select(self, *queries, **kwargs):
         query = compile_queries(*queries)
-        return find(query, self.children, roots=roots)
+        return select(query, self.children, **kwargs)
+
+    def find(self, *queries, **kwargs):
+        """
+        Finds matching results anywhere in the configuration
+        """
+        roots = kwargs.get("roots", False)
+        return self.select(*queries, deep=True, roots=roots)
+
+    @property
+    def section(self):
+        return None
+
+    @property
+    def section_name(self):
+        return None
+
+    @property
+    def sections(self):
+        return Result(children=[c for c in self.doc.children if isinstance(c, Section)])
+
+    @property
+    def directives(self):
+        return Result(children=[c for c in self.doc.children if isinstance(c, Directive)])
 
     def __contains__(self, key):
         return len(self[key]) > 0
@@ -73,19 +132,41 @@ class Entry:
         return Result(children=[c for c in self.children if query.test(c)])
 
     def __repr__(self):
-        return f"{self.name}: {self.string_value}"
+        return "\n".join(pretty_format(self))
+
+
+class Section(Entry):
+    @property
+    def section(self):
+        return self.name
+
+    @property
+    def section_name(self):
+        return self.value
+
+
+class Directive(Entry):
+    @property
+    def section(self):
+        if self.parent:
+            return self.parent.section
+
+    @property
+    def section_name(self):
+        if self.parent:
+            return self.parent.section_name
 
 
 class Result(Entry):
     def __init__(self, children=None):
-        super().__init__()
+        super(Result, self).__init__()
         self.children = children or []
 
     @property
     def string_value(self):
-        v = self.value
-        t = " ".join(["%s"] * len(v))
-        return t % tuple(v)
+        if len(self.children) == 1:
+            return self.children[0].string_value
+        raise Exception("More than one value to return.")
 
     @property
     def value(self):
@@ -93,18 +174,15 @@ class Result(Entry):
             return self.children[0].value
         raise Exception("More than one value to return.")
 
-    def find(self, *queries, roots=False):
+    def select(self, *queries, **kwargs):
         query = compile_queries(*queries)
-        return find(query, self.grandchildren, roots=roots)
+        return select(query, self.grandchildren, **kwargs)
 
     def __getitem__(self, query):
         if isinstance(query, (int, slice)):
             return self.children[query]
         query = desugar(query)
         return Result(children=[c for c in self.grandchildren if query.test(c)])
-
-    def __repr__(self):
-        return f"<Result>"
 
 
 def from_dict(orig):
@@ -128,7 +206,7 @@ def from_dict(orig):
     return Entry(children=inner(orig))
 
 
-class EntryQuery:
+class EntryQuery(object):
     def __init__(self, expr):
         self.expr = expr
 
@@ -228,10 +306,9 @@ def compile_queries(*queries):
     return inner
 
 
-def find(query, nodes, roots=False):
-    results = []
-    for n in flatten(nodes):
-        results.extend(query([n]))
+def select(query, nodes, deep=False, roots=False):
+    results = query(flatten(nodes)) if deep else query(nodes)
+
     if not roots:
         return Result(children=results)
 
@@ -259,3 +336,6 @@ ieq = lift2(operator.eq, ignore_case=True)
 icontains = lift2(operator.contains, ignore_case=True)
 istartswith = lift2(str.startswith, ignore_case=True)
 iendswith = lift2(str.endswith, ignore_case=True)
+
+first = 0
+last = -1

@@ -1,9 +1,11 @@
+from __future__ import print_function
+import functools
 import string
 from bisect import bisect_left
 from io import StringIO
 
 
-class Node:
+class Node(object):
     def __init__(self):
         self.children = []
 
@@ -12,7 +14,7 @@ class Node:
         return self
 
     def set_children(self, children):
-        self.children.clear()
+        self.children = []
         for c in children:
             self.add_child(c)
         return self
@@ -46,7 +48,25 @@ def render(tree):
     print(text_format(tree))
 
 
-class Ctx:
+def debug_hook(func):
+    @functools.wraps(func)
+    def inner(self, pos, data, ctx):
+        if self._debug:
+            line = ctx.line(pos) + 1
+            col = ctx.col(pos) + 1
+            print("Trying {} at line {} col {}".format(self, line, col))
+            try:
+                res = func(self, pos, data, ctx)
+                print("Result: {}".format(res[1]))
+                return res
+            except:
+                print("Failed")
+                raise
+        return func(self, pos, data, ctx)
+    return inner
+
+
+class Ctx(object):
     def __init__(self, lines, src=None):
         self.error_pos = -1
         self.error_msg = None
@@ -72,8 +92,13 @@ class Ctx:
 
 class Parser(Node):
     def __init__(self):
-        super().__init__()
+        super(Parser, self).__init__()
         self.name = None
+        self._debug = False
+
+    def debug(self, d=True):
+        self._debug = d
+        return self
 
     def map(self, func):
         return Map(self, func)
@@ -113,6 +138,9 @@ class Parser(Node):
         self.name = name
         return self
 
+    def process(self, pos, data, ctx):
+        raise NotImplementedError()
+
     def __call__(self, data, src=None):
         data = list(data)
         data.append(None)  # add a terminal so we don't overrun
@@ -124,24 +152,26 @@ class Parser(Node):
         except Exception:
             lineno = ctx.line(ctx.error_pos) + 1
             colno = ctx.col(ctx.error_pos) + 1
-            ex = Exception(f"At line {lineno} column {colno}: {ctx.error_msg}")
+            msg = "At line {} column {}: {}"
+            ex = Exception(msg.format(lineno, colno, ctx.error_msg))
         if ex:
             raise ex
 
     def __repr__(self):
-        return self.name or f"{self.__class__.__name__}"
+        return self.name or self.__class__.__name__
 
 
 class Wrapper(Parser):
     def __init__(self, parser):
-        super().__init__()
+        super(Wrapper, self).__init__()
         self.add_child(parser)
 
+    @debug_hook
     def process(self, pos, data, ctx):
         return self.children[0].process(pos, data, ctx)
 
 
-class Mark:
+class Mark(object):
     def __init__(self, lineno, col, value):
         self.lineno = lineno
         self.col = col
@@ -154,21 +184,23 @@ class PosMarker(Wrapper):
     wrapping it in a PosMarker. The value of the parser that handled the input
     as well as the initial input position will be returned as a Mark instance.
     """
+    @debug_hook
     def process(self, pos, data, ctx):
         lineno = ctx.line(pos) + 1
         col = ctx.col(pos) + 1
-        pos, result = super().process(pos, data, ctx)
+        pos, result = super(PosMarker, self).process(pos, data, ctx)
         return pos, Mark(lineno, col, result)
 
 
 class Seq(Parser):
     def __init__(self, children):
-        super().__init__()
+        super(Seq, self).__init__()
         self.set_children(children)
 
     def __add__(self, other):
         return self.add_child(other)
 
+    @debug_hook
     def process(self, pos, data, ctx):
         results = []
         for p in self.children:
@@ -179,12 +211,13 @@ class Seq(Parser):
 
 class Choice(Parser):
     def __init__(self, children):
-        super().__init__()
+        super(Choice, self).__init__()
         self.set_children(children)
 
     def __or__(self, other):
         return self.add_child(other)
 
+    @debug_hook
     def process(self, pos, data, ctx):
         ex = None
         for c in self.children:
@@ -196,6 +229,7 @@ class Choice(Parser):
 
 
 class Many(Wrapper):
+    @debug_hook
     def process(self, pos, data, ctx):
         results = []
         p = self.children[0]
@@ -209,19 +243,21 @@ class Many(Wrapper):
 
 
 class Many1(Many):
+    @debug_hook
     def process(self, pos, data, ctx):
-        pos, results = super().process(pos, data, ctx)
+        pos, results = super(Many1, self).process(pos, data, ctx)
         if len(results) == 0:
             child = self.children[0]
-            raise Exception(f"Expected at least one {child}.")
+            raise Exception("Expected at least one {}.".format(child))
         return pos, results
 
 
 class Until(Parser):
     def __init__(self, parser, predicate):
-        super().__init__()
+        super(Until, self).__init__()
         self.set_children([parser, predicate])
 
+    @debug_hook
     def process(self, pos, data, ctx):
         parser, pred = self.children
         results = []
@@ -241,9 +277,10 @@ class Until(Parser):
 
 class FollowedBy(Parser):
     def __init__(self, p, f):
-        super().__init__()
+        super(FollowedBy, self).__init__()
         self.set_children([p, f])
 
+    @debug_hook
     def process(self, pos, data, ctx):
         left, right = self.children
         new, res = left.process(pos, data, ctx)
@@ -257,9 +294,10 @@ class FollowedBy(Parser):
 
 class NotFollowedBy(Parser):
     def __init__(self, p, f):
-        super().__init__()
+        super(NotFollowedBy, self).__init__()
         self.set_children([p, f])
 
+    @debug_hook
     def process(self, pos, data, ctx):
         left, right = self.children
         new, res = left.process(pos, data, ctx)
@@ -268,14 +306,15 @@ class NotFollowedBy(Parser):
         except Exception:
             return new, res
         else:
-            raise Exception(f"{right} can't follow {left}")
+            raise Exception("{} can't follow {}".format(right, left))
 
 
 class KeepLeft(Parser):
     def __init__(self, left, right):
-        super().__init__()
+        super(KeepLeft, self).__init__()
         self.set_children([left, right])
 
+    @debug_hook
     def process(self, pos, data, ctx):
         left, right = self.children
         pos, res = left.process(pos, data, ctx)
@@ -285,9 +324,10 @@ class KeepLeft(Parser):
 
 class KeepRight(Parser):
     def __init__(self, left, right):
-        super().__init__()
+        super(KeepRight, self).__init__()
         self.set_children([left, right])
 
+    @debug_hook
     def process(self, pos, data, ctx):
         left, right = self.children
         pos, _ = left.process(pos, data, ctx)
@@ -297,10 +337,11 @@ class KeepRight(Parser):
 
 class Opt(Parser):
     def __init__(self, p, default=None):
-        super().__init__()
+        super(Opt, self).__init__()
         self.add_child(p)
         self.default = default
 
+    @debug_hook
     def process(self, pos, data, ctx):
         try:
             return self.children[0].process(pos, data, ctx)
@@ -310,28 +351,29 @@ class Opt(Parser):
 
 class Map(Parser):
     def __init__(self, p, func):
-        super().__init__()
+        super(Map, self).__init__()
         self.add_child(p)
         self.func = func
 
+    @debug_hook
     def process(self, pos, data, ctx):
         pos, res = self.children[0].process(pos, data, ctx)
         return pos, self.func(res)
 
     def __repr__(self):
-        return f"Map({self.func})"
+        return "Map({})".format(self.func)
 
 
 class Lift(Parser):
     def __init__(self, func):
-        super().__init__()
+        super(Lift, self).__init__()
         self.func = func
 
     def __mul__(self, other):
         return self.add_child(other)
 
+    @debug_hook
     def process(self, pos, data, ctx):
-        ex = None
         results = []
         for c in self.children:
             pos, res = c.process(pos, data, ctx)
@@ -339,25 +381,25 @@ class Lift(Parser):
         try:
             return pos, self.func(*results)
         except Exception as e:
-            ex = e
-        if ex:
-            ctx.set(pos, str(ex))
-            raise ex
+            ctx.set(pos, str(e))
+            raise
 
 
 class Forward(Parser):
     def __init__(self):
-        super().__init__()
+        super(Forward, self).__init__()
         self.delegate = None
 
     def __le__(self, delegate):
         self.set_children([delegate])
 
+    @debug_hook
     def process(self, pos, data, ctx):
         return self.children[0].process(pos, data, ctx)
 
 
 class EOF(Parser):
+    @debug_hook
     def process(self, pos, data, ctx):
         if data[pos] is None:
             return pos, None
@@ -368,31 +410,33 @@ class EOF(Parser):
 
 class Char(Parser):
     def __init__(self, char):
-        super().__init__()
+        super(Char, self).__init__()
         self.char = char
 
+    @debug_hook
     def process(self, pos, data, ctx):
         if data[pos] == self.char:
             return (pos + 1, self.char)
-        msg = f"Expected {self.char}."
+        msg = "Expected {}.".format(self.char)
         ctx.set(pos, msg)
         raise Exception(msg)
 
     def __repr__(self):
-        return f"Char('{self.char}')"
+        return "Char('{}')".format(self.char)
 
 
 class InSet(Parser):
     def __init__(self, s, name=None):
-        super().__init__()
+        super(InSet, self).__init__()
         self.values = set(s)
         self.name = name
 
+    @debug_hook
     def process(self, pos, data, ctx):
         c = data[pos]
         if c in self.values:
             return (pos + 1, c)
-        msg = f"Expected {self}."
+        msg = "Expected {}.".format(self)
         ctx.set(pos, msg)
         raise Exception(msg)
 
@@ -401,11 +445,12 @@ class Literal(Parser):
     _NULL = object()
 
     def __init__(self, chars, value=_NULL, ignore_case=False):
-        super().__init__()
+        super(Literal, self).__init__()
         self.chars = chars if not ignore_case else chars.lower()
         self.value = value
         self.ignore_case = ignore_case
 
+    @debug_hook
     def process(self, pos, data, ctx):
         old = pos
         if not self.ignore_case:
@@ -413,7 +458,7 @@ class Literal(Parser):
                 if data[pos] == c:
                     pos += 1
                 else:
-                    msg = f"Expected {self.chars}."
+                    msg = "Expected {}.".format(self.chars)
                     ctx.set(old, msg)
                     raise Exception(msg)
             return pos, (self.chars if self.value is self._NULL else self.value)
@@ -424,7 +469,7 @@ class Literal(Parser):
                     result.append(data[pos])
                     pos += 1
                 else:
-                    msg = f"Expected case insensitive {self.chars}."
+                    msg = "Expected case insensitive {}.".format(self.chars)
                     ctx.set(old, msg)
                     raise Exception(msg)
             return pos, ("".join(result) if self.value is self._NULL else self.value)
@@ -432,11 +477,12 @@ class Literal(Parser):
 
 class String(Parser):
     def __init__(self, chars, echars=None, min_length=1):
-        super().__init__()
+        super(String, self).__init__()
         self.chars = set(chars)
         self.echars = set(echars) if echars else set()
         self.min_length = min_length
 
+    @debug_hook
     def process(self, pos, data, ctx):
         results = []
         p = data[pos]
@@ -452,7 +498,7 @@ class String(Parser):
                 break
             p = data[pos]
         if len(results) < self.min_length:
-            msg = f"Expected {self.min_length} of {self.chars}."
+            msg = "Expected {} of {}.".format(self.min_length, self.chars)
             ctx.set(old, msg)
             raise Exception(msg)
         return pos, "".join(results)
@@ -460,27 +506,30 @@ class String(Parser):
 
 class EnclosedComment(Parser):
     def __init__(self, s, e):
-        super().__init__()
+        super(EnclosedComment, self).__init__()
         Start = Literal(s)
         End = Literal(e)
         p = Start >> AnyChar.until(End).map(lambda x: "".join(x)) << End
         self.add_child(p)
 
+    @debug_hook
     def process(self, pos, data, ctx):
         return self.children[0].process(pos, data, ctx)
 
 
 class OneLineComment(Parser):
     def __init__(self, s):
-        super().__init__()
+        super(OneLineComment, self).__init__()
         p = Literal(s) >> Opt(String(set(string.printable) - set("\r\n")), "")
         self.add_child(p)
 
+    @debug_hook
     def process(self, pos, data, ctx):
         return self.children[0].process(pos, data, ctx)
 
 
 class WithIndent(Wrapper):
+    @debug_hook
     def process(self, pos, data, ctx):
         new, _ = WS.process(pos, data, ctx)
         try:
@@ -491,10 +540,12 @@ class WithIndent(Wrapper):
 
 
 class HangingString(Parser):
-    def __init__(self, chars):
-        super().__init__()
-        self.add_child(String(chars) << (EOL | EOF))
+    def __init__(self, chars, echars=None, min_length=1):
+        super(HangingString, self).__init__()
+        p = String(chars, echars=echars, min_length=min_length)
+        self.add_child(p << (EOL | EOF))
 
+    @debug_hook
     def process(self, pos, data, ctx):
         old = pos
         results = []
@@ -502,7 +553,7 @@ class HangingString(Parser):
             try:
                 if ctx.col(pos) > ctx.indents[-1]:
                     pos, res = self.children[0].process(pos, data, ctx)
-                    results.append(res)
+                    results.append(res.rstrip(" \\"))
                 else:
                     pos = old
                     break
@@ -515,6 +566,7 @@ class HangingString(Parser):
 
 
 class StartTagName(Wrapper):
+    @debug_hook
     def process(self, pos, data, ctx):
         pos, res = self.children[0].process(pos, data, ctx)
         ctx.tags.append(res)
@@ -522,11 +574,23 @@ class StartTagName(Wrapper):
 
 
 class EndTagName(Wrapper):
+    def __init__(self, parser, ignore_case=False):
+        super(EndTagName, self).__init__(parser)
+        self.ignore_case = ignore_case
+
+    @debug_hook
     def process(self, pos, data, ctx):
         pos, res = self.children[0].process(pos, data, ctx)
         expect = ctx.tags.pop()
-        if res != expect:
-            msg = f"Expected {expect}. Got {res}."
+
+        r, e = res, expect
+
+        if self.ignore_case:
+            r = res.lower()
+            e = expect.lower()
+
+        if r != e:
+            msg = "Expected {}. Got {}.".format(expect, res)
             ctx.set(pos, msg)
             raise Exception(msg)
         return pos, res
@@ -564,7 +628,7 @@ Digits = String(string.digits) % "Digits"
 Letter = InSet(string.ascii_letters)
 Letters = String(string.ascii_letters)
 WSChar = InSet(set(string.whitespace) - set("\n\r")) % "Whitespace w/o EOL"
-WS = Many(InSet(string.whitespace)) % "Whitespace"
+WS = Many(InSet(string.whitespace) % "WS") % "Whitespace"
 Number = (Lift(make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)) % "Number"
 SingleQuotedString = Char("'") >> String(set(string.printable) - set("'"), "'") << Char("'")
 DoubleQuotedString = Char('"') >> String(set(string.printable) - set('"'), '"') << Char('"')

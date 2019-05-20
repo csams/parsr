@@ -34,10 +34,10 @@ def test_values():
     assert n["a"].value == 3
 
     assert n["b"].string_value == "four five"
-    assert n["b"].value == ["four", "five"]
+    assert n["b"].value == "four five"
 
     assert n["c"].string_value == "9 15"
-    assert n["c"].value == [9, 15]
+    assert n["c"].value == "9 15"
 
     assert n["d"]["e"].value == 9.7
 
