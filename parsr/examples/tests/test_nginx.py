@@ -27,11 +27,6 @@ http {
   tcp_nopush   on;
   server_names_hash_bucket_size 128; # this seems to be required for some vhosts
 
-  map $http_upgrade $connection_upgrade {
-    default upgrade;
-    '' close;
-  }
-
   server { # php/fastcgi
     listen       80;
     server_name  domain1.com www.domain1.com;

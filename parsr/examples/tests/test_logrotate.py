@@ -61,7 +61,6 @@ def test_logrotate_example():
     assert res["/var/log/messages"]["rotate"].value == 5
     assert res["/var/log/messages"]["rotate"][0].lineno == 5
     assert res["/var/log/messages"]["weekly"].value is None
-    print(res["/var/log/messages"]["postrotate"][0].attrs)
     assert res["/var/log/messages"]["postrotate"].value == "/usr/bin/killall -HUP syslogd"
     assert res["/var/log/news/*"][0].lineno == 22
 

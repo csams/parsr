@@ -1,7 +1,7 @@
 import string
 from parsr import (AnyChar, Choice, EOF, EOL, Forward, LeftCurly, LineEnd,
-                   Literal, Many, Number, OneLineComment, Opt, PosMarker,
-                   QuotedString, RightCurly, skip_none, String, WS, WSChar)
+        Literal, Many, Number, OneLineComment, Opt, PosMarker, QuotedString,
+        RightCurly, skip_none, String, WS, WSChar)
 from parsr.query import Directive, Entry, Section
 
 

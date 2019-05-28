@@ -10,7 +10,7 @@ import operator
 import string
 from functools import reduce
 from parsr import (EOF, EOL, InSet, LineEnd, Many, Number, OneLineComment, Opt,
-                   PosMarker, skip_none, String, WS, WSChar)
+        PosMarker, skip_none, String, WS, WSChar)
 from parsr.query import Entry
 
 

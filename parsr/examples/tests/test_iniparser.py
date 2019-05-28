@@ -49,7 +49,7 @@ def test_defaults():
 def test_multiple_values():
     res = parse_doc(DATA, None)
     assert len(res["settings"]["color"]) == 2
-    assert res["settings"]["accuracy"][0].value == 0
+    assert res["settings"]["accuracy"][0].value == "0"
 
 
 def test_no_value():

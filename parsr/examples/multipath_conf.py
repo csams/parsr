@@ -4,8 +4,8 @@ dictionaries.
 """
 import string
 from parsr import (EOF, Forward, LeftCurly, Lift, Literal, LineEnd, RightCurly,
-                   Many, Number, OneLineComment, PosMarker, skip_none, String,
-                   QuotedString, WS, WSChar)
+        Many, Number, OneLineComment, PosMarker, skip_none, String,
+        QuotedString, WS, WSChar)
 from parsr.query import Entry
 
 

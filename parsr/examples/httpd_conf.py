@@ -1,8 +1,8 @@
 import string
 from parsr import (Char, EOF, EOL, EndTagName, Forward, FS, GT, LT, Letters,
-                   Lift, LineEnd, Many, Number, OneLineComment, PosMarker,
-                   QuotedString, skip_none, StartTagName, String, WS, WSChar)
-from parsr.query import Entry
+        Lift, LineEnd, Many, Number, OneLineComment, PosMarker, QuotedString,
+        skip_none, StartTagName, String, WS, WSChar)
+from parsr.query import Directive, Entry, Section
 
 
 def loads(data):
@@ -14,12 +14,12 @@ def load(f):
 
 
 def simple_to_entry(name, attrs):
-    return Entry(name=name.value, attrs=attrs, lineno=name.lineno)
+    return Directive(name=name.value, attrs=attrs, lineno=name.lineno)
 
 
 def complex_to_entry(tag, children):
     name, attrs = tag
-    return Entry(name=name.value, attrs=attrs, children=children, lineno=name.lineno)
+    return Section(name=name.value, attrs=attrs, children=children, lineno=name.lineno)
 
 
 Complex = Forward()
