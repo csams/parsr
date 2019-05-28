@@ -16,7 +16,7 @@ check out the [lesson](https://github.com/csams/parsr/blob/master/parsr/lesson).
 the common data model and query system.
 
 ## Install
-1. Ensure python3.6 or python3.7 is installed.
+1. Ensure python2.7, python3.6, or python3.7 is installed.
 2. `python3.7 -m venv myproject && cd myproject`
 3. `source bin/activate`
 4. `pip install parsr`
