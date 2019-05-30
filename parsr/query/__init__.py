@@ -1,6 +1,6 @@
 """
-parsr.query defines a common data model and query language for parsers
-created with ``parsr`` to target.
+parsr.query defines a common data model and query language for parsers created
+with ``parsr`` to target.
 
 The model allows duplicate keys, and it allows values with *unnamed* attributes
 and recursive substructure. This is a common model for many kinds of
