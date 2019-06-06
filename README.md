@@ -187,26 +187,21 @@ val = ab("ababab")# produces [["a", b"], ["a", "b"], ["a", "b"]]
 
 ab = Many(a | b)  # parses any combination of "a" and "b" like "aababbaba..."
 val = ab("aababb")# produces ["a", "a", "b", "a", "b", "b"]
-```
 
-### Many1
-Match one or more occurences of an expression. Matching is greedy.
-```python
-x = Char("x")
-xs = Many1(x)     # parses many (or no) x's in a row
+xs = Many(x, lower=1)     # parses many (or no) x's in a row
 val = xs("")      # raises an exception
 val = xs("a")     # raises an exception
 val = xs("x")     # returns ["x"]
 val = xs("xxxxx") # returns ["x", "x", "x", "x", "x"]
 val = xs("xxxxb") # returns ["x", "x", "x", "x"]
 
-ab = Many1(a + b) # parses "abab..."
+ab = Many(a + b, lower=1) # parses "abab..."
 val = ab("")      # raises an exception
 val = ab("ab")    # produces [["a", "b"]]
 val = ab("ba")    # raises an exception
 val = ab("ababab")# produces [["a", "b"], ["a", "b"], ["a", "b"]]
 
-ab = Many1(a | b) # parses any combination of "a" and "b" like "aababbaba..."
+ab = Many(a | b, lower=1) # parses any combination of "a" and "b" like "aababbaba..."
 val = ab("aababb")# produces ["a", "a", "b", "a", "b", "b"]
 ```
 
