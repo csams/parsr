@@ -25,7 +25,7 @@ def test_find_leaves():
 def test_find_roots():
     res = complex_tree.find("puppy", roots=True)
     assert len(res) == 1
-    assert res[0].name == "dog"
+    assert res[0].name == "root"
 
 
 def test_find_chain():

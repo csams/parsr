@@ -1,8 +1,4 @@
-import string
-
-
 # A way of describing arithmetic:
-
 # number = Many(digits)
 # factor = ("(" + expr + ")") | number
 # term = factor + Many("*/" + factor)
@@ -12,7 +8,7 @@ import string
 def number(pos, data):
     # number = Many(digits).map(to_int)
     rest = []
-    while data[pos] and data[pos] in string.digits:
+    while data[pos] and data[pos].isdigit():
         rest.append(data[pos])
         pos += 1
     return pos, int("".join(rest))
@@ -21,9 +17,9 @@ def number(pos, data):
 def factor(pos, data):
     # factor = ("(" + expr + ")") | number
     if data[pos] == "(":
-        pos, res = expr(pos + 1, data)
+        pos, res = expr(pos + 1, data)  # don't forget to jump the "("
         assert data[pos] == ")", "Unmatched paren."
-        return pos + 1, res
+        return pos + 1, res  # don't forget to jump the ")"
     return number(pos, data)
 
 
@@ -33,10 +29,7 @@ def term(pos, data):
     while data[pos] and data[pos] in "*/":
         op = data[pos]
         pos, right = factor(pos + 1, data)
-        if op == "*":
-            left *= right
-        else:
-            left /= right
+        left = left * right if op == "*" else left / right
     return pos, left
 
 
@@ -46,10 +39,7 @@ def expr(pos, data):
     while data[pos] and data[pos] in "+-":
         op = data[pos]
         pos, right = term(pos + 1, data)
-        if op == "+":
-            left += right
-        else:
-            left -= right
+        left = left + right if op == "+" else left - right
     return pos, left
 
 

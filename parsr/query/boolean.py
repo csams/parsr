@@ -39,6 +39,7 @@ it's fully applied.
         gt_five_and_lt_10 = gt(5) & lt(10)
 
 """
+import functools
 
 
 class Boolean(object):
@@ -71,10 +72,6 @@ class Any(Boolean):
     def __init__(self, *exprs):
         self.exprs = list(exprs)
 
-    def __or__(self, other):
-        self.exprs.append(other)
-        return self
-
     def test(self, value):
         return any(q.test(value) for q in self.exprs)
 
@@ -82,10 +79,6 @@ class Any(Boolean):
 class All(Boolean):
     def __init__(self, *exprs):
         self.exprs = list(exprs)
-
-    def __and__(self, other):
-        self.exprs.append(other)
-        return self
 
     def test(self, value):
         return all(q.test(value) for q in self.exprs)
@@ -125,6 +118,7 @@ def lift(func, ignore_case=False):
 
 
 def lift2(func, ignore_case=False):
+    @functools.wraps(func)
     def inner(val):
         if ignore_case:
             return CaselessLift(func, val.lower())

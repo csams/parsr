@@ -126,7 +126,7 @@ def _debug_hook(func):
             if self._debug:
                 log.debug("Result: {}".format(res[1]))
             return res
-        except:
+        except:  # noqa E722
             if self._debug:
                 ps = "-> ".join([str(p) for p in ctx.parser_stack])
                 log.debug("Failed: {}".format(ps))
@@ -335,6 +335,16 @@ class Parser(with_metaclass(_ParserMeta, Node)):
         return self.name or self.__class__.__name__
 
 
+class AnyChar(Parser):
+    def process(self, pos, data, ctx):
+        c = data[pos]
+        if c is not None:
+            return (pos + 1, c)
+        msg = "Expected any character."
+        ctx.set(pos, msg)
+        raise Exception(msg)
+
+
 class Char(Parser):
     """
     Char matches a single character.
@@ -531,9 +541,9 @@ class Mark(object):
 
 class PosMarker(Wrapper):
     """
-    Save the line number and column of a non-terminal or terminal by wrapping
-    it in a PosMarker. The value of the parser that handled the input as well
-    as the initial input position will be returned as a :py:class:`Mark`.
+    Save the line number and column of a subparser by wrapping it in a
+    PosMarker. The value of the parser that handled the input as well as the
+    initial input position will be returned as a :py:class:`Mark`.
     """
     def process(self, pos, data, ctx):
         lineno = ctx.line(pos) + 1
@@ -624,7 +634,7 @@ class Choice(Parser):
         for c in self.children:
             try:
                 return c.process(pos, data, ctx)
-            except:
+            except:  # noqa E722
                 pass
         raise Exception()
 
@@ -659,7 +669,7 @@ class Many(Parser):
             ab = Many(a | b)  # parses any combination of "a" and "b" like
                               # "aababbaba..."
             val = ab("aababb")# produces ["a", "a", "b", "a", "b", "b"]
-            val = Many(1, lower=1) # requires at least one "a"
+            bs = Many(Char("b"), lower=1) # requires at least one "b"
 
     """
     def __init__(self, parser, lower=0):
@@ -1040,7 +1050,7 @@ class OneLineComment(Parser):
     """
     def __init__(self, s):
         super(OneLineComment, self).__init__()
-        p = Literal(s) >> Opt(String(set(string.printable) - set("\r\n")), "")
+        p = Literal(s) >> Opt(AnyChar.until(InSet("\r\n")), "")
         self.add_child(p)
 
     def process(self, pos, data, ctx):
@@ -1158,14 +1168,14 @@ def _make_number(sign, int_part, frac_part):
 
 def skip_none(x):
     """
-    Filters ``None`` values from a list.
+    Filters ``None`` values from a list. Often used with map.
     """
     return [i for i in x if i is not None]
 
 
 EOF = EOF()
 EOL = InSet("\n\r") % "EOL"
-LineEnd = Wrapper(EOL | EOF)
+LineEnd = Wrapper(EOL | EOF) % "LineEnd"
 EQ = Char("=")
 LT = Char("<")
 GT = Char(">")
@@ -1179,7 +1189,7 @@ RightParen = Char(")")
 Colon = Char(":")
 SemiColon = Char(";")
 Comma = Char(",")
-AnyChar = InSet(string.printable) % "Any Char"
+AnyChar = AnyChar()
 NonZeroDigit = InSet(set(string.digits) - set("0"))
 Digit = InSet(string.digits) % "Digit"
 Digits = String(string.digits) % "Digits"
