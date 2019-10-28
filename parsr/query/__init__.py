@@ -21,42 +21,10 @@ but the key passed to ``[]`` is converted to a query of immediate child
 instances instead of a simple lookup.
 """
 import operator
-from functools import partial
+import re
+from collections import defaultdict
 from itertools import chain
-from .boolean import All, Any, Boolean, lift, lift2, TRUE
-
-
-def pretty_format(root, indent=4):
-    """
-    pretty_format generates a text representation of a model as a list of
-    lines.
-    """
-    results = []
-
-    def sep():
-        if results and results[-1] != "":
-            results.append("")
-
-    def inner(d, prefix=""):
-        if isinstance(d, Result):
-            for c in d.children:
-                inner(c, prefix)
-            return
-        if d.children:
-            sep()
-            name = d.name or ""
-            header = name if not d.attrs else " ".join([name, d.string_value])
-            if header:
-                results.append(prefix + "[" + header + "]")
-            prep = prefix + (" " * indent)
-            for c in d.children:
-                inner(c, prep)
-            sep()
-        else:
-            results.append(prefix + (d.name or "") + ": " + d.string_value)
-
-    inner(root)
-    return results
+from parsr.query.boolean import All, Any, Boolean, Not, pred, pred2, TRUE
 
 
 class Entry(object):
@@ -64,7 +32,6 @@ class Entry(object):
     Entry is the base class for the data model, which is a tree of Entry
     instances. Each instance has a name, attributes, a parent, and children.
     """
-
     __slots__ = ("_name", "attrs", "children", "parent", "lineno", "src")
 
     def __init__(self, name=None, attrs=None, children=None, lineno=None, src=None):
@@ -103,6 +70,9 @@ class Entry(object):
         return sorted(set(c.name for c in self.children))
 
     def __dir__(self):
+        """
+        Exists for ipython autocompletion.
+        """
         return self.get_keys() + object.__dir__(self)
 
     @property
@@ -135,19 +105,13 @@ class Entry(object):
     @property
     def root(self):
         """
-        Returns the furthest ancestor ``Entry``.
+        Returns the furthest ancestor ``Entry``. If the node is already the
+        furthest ancestor, ``None`` is returned.
         """
-        p = self
-        while p.parent is not None:
+        p = self.parent
+        while p is not None and p.parent is not None:
             p = p.parent
         return p
-
-    @property
-    def roots(self):
-        """
-        Returns the furthest ancestor ``Entry``.
-        """
-        return Result(children=list(set(c.root for c in self.children)))
 
     @property
     def grandchildren(self):
@@ -155,6 +119,17 @@ class Entry(object):
         Returns a flattened list of all grandchildren.
         """
         return list(chain.from_iterable(c.children for c in self.children))
+
+    def upto(self, query):
+        """
+        Go up from the current node to the first node that matches query.
+        """
+        pred = _desugar(query)
+        parent = self.parent
+        while parent is not None:
+            if pred.test(parent):
+                return parent
+            parent = parent.parent
 
     def select(self, *queries, **kwargs):
         """
@@ -179,12 +154,12 @@ class Entry(object):
         """
         Selects current nodes based on name and value queries of child nodes.
         If any immediate children match the queries, the parent is included in
-        the results. The :py:func:``make_child_query`` function can be used to
+        the results. The :py:func:``child_query`` function can be used to
         construct queries that act on the children as a whole instead of one
         at a time.
 
         Example:
-        >>> from parsr.query import make_child_query as q
+        >>> from parsr.query import child_query as q
         >>> from parsr.query import from_dict
         >>> r = from_dict(load_config())
         >>> r = conf.status.conditions.where(q("status", "False") | q("type", "Progressing"))
@@ -194,7 +169,14 @@ class Entry(object):
         >>> r.lastTransitionTime.values
         ['2019-08-04T23:17:08Z', '2019-08-04T23:32:14Z']
         """
-        query = make_child_query(name, value) if not isinstance(name, DictQueryBase) else name
+        if isinstance(name, _EntryQuery):
+            query = name
+        elif isinstance(name, Boolean):
+            query = child_query(name, value)
+        elif callable(name):
+            query = SimpleQuery(pred(name))
+        else:
+            query = child_query(name, value)
         return Result(children=self.children if query.test(self) else [])
 
     @property
@@ -321,23 +303,92 @@ class Result(Entry):
     @property
     def parents(self):
         """
-        Returns the values of all the children as a list.
+        Returns all of the deduplicated parents as a list. If a child has no
+        parent, the child itself is treated as the parent.
         """
-        return Result(children=[c.parent for c in self.children])
+        parents = []
+        seen = set()
+        for c in self.children:
+            p = c.parent
+            if p is not None:
+                if p not in seen:
+                    parents.append(p)
+                    seen.add(p)
+            elif c not in seen:
+                parents.append(c)
+                seen.add(c)
+        return Result(children=parents)
+
+    @property
+    def roots(self):
+        """
+        Returns the furthest ancestor ``Entry`` instances of all children. If a
+        child has no furthest ancestor, the child itself is treated as a root.
+        """
+        roots = []
+        seen = set()
+        for c in self.children:
+            r = c.root
+            if r is not None:
+                if r not in seen:
+                    roots.append(r)
+                    seen.add(r)
+            elif c not in seen:
+                roots.append(c)
+                seen.add(c)
+        return Result(children=roots)
 
     @property
     def values(self):
         """
         Returns the values of all the children as a list.
         """
-        return [c.value for c in self.children]
+        return [c.value for c in self.children if c.value is not None]
 
     @property
     def unique_values(self):
         """
-        Returns the values of all the children as a list.
+        Returns the unique values of all the children as a list.
         """
-        return sorted(set(c.value for c in self.children))
+        return sorted(set(c.value for c in self.children if c.value is not None))
+
+    def upto(self, query):
+        """
+        Go up from the current results to the first nodes that match query.
+        """
+        roots = []
+        seen = set()
+        for c in self.children:
+            root = c.upto(query)
+            if root is not None and root not in seen:
+                roots.append(root)
+                seen.add(root)
+        return Result(children=roots)
+
+    def nth(self, n):
+        """
+        If the results are from a list beneath a node, get the nth element of
+        the results for each unique parent.
+
+        Example:
+        ``conf.status.conditions.nth(0)`` will get the 0th condition of each
+        status.
+        """
+        tmp = defaultdict(list)
+        for c in self.children:
+            tmp[c.parent].append(c)
+
+        results = []
+        for p, v in tmp.items():
+            try:
+                r = v[n]
+                if isinstance(r, list):
+                    results.extend(r)
+                else:
+                    results.append(v[n])
+            except:
+                pass
+        return Result(children=results)
 
     def select(self, *queries, **kwargs):
         query = compile_queries(*queries)
@@ -347,12 +398,12 @@ class Result(Entry):
         """
         Selects current nodes based on name and value queries of child nodes.
         If any immediate children match the queries, the parent is included in
-        the results. The :py:func:``make_child_query`` function can be used to
+        the results. The :py:func:``child_query`` function can be used to
         construct queries that act on the children as a whole instead of one
         at a time.
 
         Example:
-        >>> from parsr.query import make_child_query as q
+        >>> from parsr.query import child_query as q
         >>> from parsr.query import from_dict
         >>> r = from_dict(load_config())
         >>> r = conf.status.conditions.where(q("status", "False") | q("type", "Progressing"))
@@ -362,8 +413,20 @@ class Result(Entry):
         >>> r.lastTransitionTime.values
         ['2019-08-04T23:17:08Z', '2019-08-04T23:32:14Z']
         """
-        query = make_child_query(name, value) if not isinstance(name, DictQueryBase) else name
-        return Result(children=list(set(c for c in self.children if query.test(c))))
+        if isinstance(name, _EntryQuery):
+            query = name
+        elif isinstance(name, Boolean):
+            query = child_query(name, value)
+        elif callable(name):
+            query = SimpleQuery(pred(name))
+        else:
+            query = child_query(name, value)
+        results = []
+        seen = set()
+        for c in self.children:
+            if c not in seen and query.test(c):
+                results.append(c)
+        return Result(children=results)
 
     def __getitem__(self, query):
         if isinstance(query, (int, slice)):
@@ -376,84 +439,53 @@ class _EntryQuery(object):
     """
     _EntryQuery is the base class of all other query classes.
     """
-    def __init__(self, expr):
-        super(_EntryQuery, self).__init__()
-        self.expr = expr
+    def __and__(self, other):
+        return _AllEntryQuery(self, other)
 
-    def test(self, node):
-        return self.expr.test(node)
+    def __or__(self, other):
+        return _AnyEntryQuery(self, other)
+
+    def __invert__(self):
+        return _NotEntryQuery(self)
+
+
+class _AllEntryQuery(_EntryQuery, All):
+    pass
+
+
+class _AnyEntryQuery(_EntryQuery, Any):
+    pass
+
+
+class _NotEntryQuery(_EntryQuery, Not):
+    pass
 
 
 class NameQuery(_EntryQuery):
     """
     A query against the name of an :py:class:`Entry`.
     """
-    def test(self, node):
-        return self.expr.test(node.name)
-
-
-class AttrQuery(_EntryQuery):
-    """
-    A query against an attribute of an :py:class:`Entry`.
-    """
-    def __and__(self, other):
-        return _AndAttrQuery(self, other)
-
-    def __or__(self, other):
-        return _OrAttrQuery(self, other)
-
-    def __invert__(self):
-        return _NotAttrQuery(self)
-
-
-class _AndAttrQuery(AttrQuery):
-    def __init__(self, *exprs):
-        self.exprs = list(exprs)
+    def __init__(self, expr):
+        self.expr = expr
 
     def test(self, n):
-        return all(expr.test(n) for expr in self.exprs)
-
-    def __and__(self, other):
-        self.exprs.append(other)
-        return self
+        return self.expr.test(n.name)
 
 
-class _OrAttrQuery(AttrQuery):
-    def __init__(self, *exprs):
-        self.exprs = list(exprs)
+class _AllAttrQuery(_EntryQuery):
+    def __init__(self, expr):
+        self.expr = expr
 
-    def test(self, n):
-        return any(expr.test(n) for expr in self.exprs)
-
-    def __or__(self, other):
-        self.exprs.append(other)
-        return self
-
-
-class _NotAttrQuery(AttrQuery):
-    def __init__(self, query):
-        self.query = query
-
-    def test(self, n):
-        return not self.query.test(n)
-
-
-class _AllAttrQuery(AttrQuery):
     def test(self, n):
         return all(self.expr.test(a) for a in n.attrs)
 
 
-class _AnyAttrQuery(AttrQuery):
+class _AnyAttrQuery(_EntryQuery):
+    def __init__(self, expr):
+        self.expr = expr
+
     def test(self, n):
         return any(self.expr.test(a) for a in n.attrs)
-
-
-def any_(expr):
-    """
-    Use to express that ``expr`` can succeed on any attribute for the query to be
-    successful. Only works against :py:class:`Entry` attributes.
-    """
-    return _AnyAttrQuery(_desugar_attr(expr))
 
 
 def all_(expr):
@@ -464,6 +496,47 @@ def all_(expr):
     return _AllAttrQuery(_desugar_attr(expr))
 
 
+def any_(expr):
+    """
+    Use to express that ``expr`` can succeed on any attribute for the query to be
+    successful. Only works against :py:class:`Entry` attributes.
+    """
+    return _AnyAttrQuery(_desugar_attr(expr))
+
+
+class SimpleQuery(_EntryQuery):
+    def __init__(self, expr):
+        if not isinstance(expr, Boolean):
+            expr = pred(expr)
+        self.expr = expr
+
+    def test(self, node):
+        return self.expr.test(node)
+
+
+class ChildQuery(_EntryQuery):
+    """
+    Returns True if any child node passes the query.
+    """
+    def __init__(self, expr):
+        self.expr = expr
+
+    def test(self, node):
+        return any(self.expr.test(n) for n in node.children)
+
+
+def child_query(name, value=None):
+    """
+    Converts a query into a ChildQuery that works on all child nodes at once
+    to determine if the current node is accepted.
+    """
+    q = _desugar((name, value) if value is not None else name)
+    return ChildQuery(q)
+
+
+make_child_query = child_query
+
+
 def _desugar_name(q):
     if q is None:
         return NameQuery(TRUE)
@@ -472,16 +545,16 @@ def _desugar_name(q):
     if isinstance(q, Boolean):
         return NameQuery(q)
     if callable(q):
-        return NameQuery(lift(q))
-    return NameQuery(lift(partial(operator.eq, q)))
+        return NameQuery(pred(q))
+    return NameQuery(eq(q))
 
 
 def _desugar_attr(q):
     if isinstance(q, Boolean):
         return q
     if callable(q):
-        return lift(q)
-    return lift(partial(operator.eq, q))
+        return pred(q)
+    return eq(q)
 
 
 def _desugar_attrs(q):
@@ -489,14 +562,14 @@ def _desugar_attrs(q):
         return
     if len(q) == 1:
         q = q[0]
-        return q if isinstance(q, AttrQuery) else _AnyAttrQuery(_desugar_attr(q))
+        return q if isinstance(q, _EntryQuery) else _AnyAttrQuery(_desugar_attr(q))
     else:
         attr_queries = [_desugar_attr(a) for a in q]
         return _AnyAttrQuery(Any(*attr_queries))
 
 
 def _desugar(q):
-    if isinstance(q, DictQueryBase):
+    if isinstance(q, _EntryQuery):
         return q
     if isinstance(q, tuple):
         q = list(q)
@@ -508,64 +581,10 @@ def _desugar(q):
     return _desugar_name(q)
 
 
-class DictQueryBase(object):
-    """
-    Base class for queries that target all children of a node as once.
-    """
-    def __init__(self, expr):
-        self.expr = expr
-
-    def __or__(self, other):
-        return DictOr(self, other)
-
-    def __and__(self, other):
-        return DictAnd(self, other)
-
-    def __invert__(self):
-        return DictNot(self)
-
-
-class DictQuery(DictQueryBase):
-    """
-    Returns True if any child node passes the query.
-    """
-    def test(self, node):
-        return any(self.expr.test(n) for n in node.children)
-
-
-class DictNot(DictQueryBase):
-    def test(self, node):
-        return not self.expr.test(node)
-
-
-class DictAnd(DictQueryBase):
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
-
-    def test(self, node):
-        return self.left.test(node) and self.right.test(node)
-
-
-class DictOr(DictQueryBase):
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
-
-    def test(self, node):
-        return self.left.test(node) or self.right.test(node)
-
-
-def make_child_query(name, value=None):
-    """
-    Converts a query into a DictQuery that works on all child nodes at once
-    to determine if the current node is accepted.
-    """
-    q = _desugar((name, value) if value is not None else name)
-    return DictQuery(q)
-
-
 def _flatten(nodes):
+    """
+    Flatten the config tree into a list of nodes.
+    """
     def inner(n):
         res = [n]
         res.extend(chain.from_iterable(inner(c) for c in n.children))
@@ -600,7 +619,7 @@ def compile_queries(*queries):
     return inner
 
 
-def select(query, nodes, deep=False, roots=None):
+def select(query, nodes, deep=False, roots=False):
     """
     select runs query, a function returned by :py:func:`compile_queries`,
     against a list of :py:class:`Entry` instances. If you pass ``deep=True``,
@@ -629,7 +648,6 @@ def from_dict(orig):
     from_dict is a helper function that does its best to convert a python dict
     into a tree of :py:class:`Entry` instances that can be queried.
     """
-
     def inner(d):
         result = []
         for k, v in d.items():
@@ -650,28 +668,57 @@ def from_dict(orig):
     return Entry(children=inner(orig))
 
 
-# These are operators that can be used inside of queries.
-lt = lift2(operator.lt)
-le = lift2(operator.le)
-eq = lift2(operator.eq)
-gt = lift2(operator.gt)
-ge = lift2(operator.ge)
+def pretty_format(root, indent=4):
+    """
+    pretty_format generates a text representation of a model as a list of
+    lines.
+    """
+    results = []
+
+    def sep():
+        if results and results[-1] != "":
+            results.append("")
+
+    def inner(d, prefix=""):
+        if isinstance(d, Result):
+            for c in d.children:
+                inner(c, prefix)
+            return
+        if d.children:
+            sep()
+            name = d._name or ""
+            header = name if not d.attrs else " ".join([name, d.string_value])
+            if header:
+                results.append(prefix + "[" + header + "]")
+            prep = prefix + (" " * indent)
+            for c in d.children:
+                inner(c, prep)
+            sep()
+        else:
+            results.append(prefix + (d._name or "") + ": " + d.string_value)
+
+    inner(root)
+    return results
 
 
-def isin(v, values):
-    return v in set(values)
+# These predicates can be used in queries.
+lt = pred2(operator.lt)
+le = pred2(operator.le)
+eq = pred2(operator.eq)
+gt = pred2(operator.gt)
+ge = pred2(operator.ge)
 
+isin = pred2(lambda v, values: v in set(values))
+matches = pred2(lambda v, pat: re.search(pat, v))
 
-isin = lift2(isin)
+contains = pred2(operator.contains)
+startswith = pred2(str.startswith)
+endswith = pred2(str.endswith)
 
-contains = lift2(operator.contains)
-startswith = lift2(str.startswith)
-endswith = lift2(str.endswith)
-
-ieq = lift2(operator.eq, ignore_case=True)
-icontains = lift2(operator.contains, ignore_case=True)
-istartswith = lift2(str.startswith, ignore_case=True)
-iendswith = lift2(str.endswith, ignore_case=True)
+ieq = pred2(operator.eq, ignore_case=True)
+icontains = pred2(operator.contains, ignore_case=True)
+istartswith = pred2(str.startswith, ignore_case=True)
+iendswith = pred2(str.endswith, ignore_case=True)
 
 first = 0
 last = -1
