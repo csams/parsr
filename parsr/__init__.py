@@ -220,12 +220,12 @@ class Parser(with_metaclass(_ParserMeta, Node)):
         """
         return Lift(self._accumulate) * Opt(self) * Many(sep >> self)
 
-    def until(self, pred):
+    def until(self, pred, upper=None):
         """
         Return an :py:class:`Until` parser that matches zero or more instances
         of the current parser until the pred parser succeeds.
         """
-        return Until(self, pred)
+        return Until(self, pred, upper=upper)
 
     def map(self, func):
         """
@@ -448,6 +448,30 @@ class String(Parser):
             ctx.set(old, msg)
             raise Exception(msg)
         return pos, "".join(results)
+
+
+class StringUntil(Parser):
+    """
+    StringUntil matches any number of characters until a predicate is seen.
+
+        .. code-block:: python
+
+            su  = StringUntil(Char("="))  # parses any number of characters until 'a'
+            val = su("ab=")               # produces "ab" from the data.
+            val = su("ab")                # raises an exception
+
+    """
+    def __init__(self, term, lower=None, upper=None):
+        super(StringUntil, self).__init__()
+        self.add_child(AnyChar.until(term, upper=upper).map(lambda x: "".join(x)) & term)
+        self.lower = lower
+
+    def process(self, pos, data, ctx):
+        (newpos, res) = self.children[0].process(pos, data, ctx)
+        if self.lower is not None and len(res) < self.lower:
+            ctx.set(pos, "Expected at least {} characters.".format(self.lower))
+            raise Exception()
+        return newpos, res
 
 
 class Literal(Parser):
@@ -728,11 +752,13 @@ class Until(Parser):
             val = cs("abcdycc")           # returns ["a", "b", "c", "d"]
 
     """
-    def __init__(self, parser, predicate):
+    def __init__(self, parser, predicate, upper=None):
         super(Until, self).__init__()
         self.set_children([parser, predicate])
+        self.upper = upper
 
     def process(self, pos, data, ctx):
+        bound = self.upper
         parser, pred = self.children
         results = []
         while True:
@@ -744,6 +770,10 @@ class Until(Parser):
                     results.append(res)
                 except Exception:
                     break
+                if bound is not None and len(results) > bound:
+                    msg = "{} matched more than {}.".format(self.parser, bound)
+                    ctx.set(pos, msg)
+                    raise Exception()
             else:
                 break
         return pos, results
@@ -1174,6 +1204,14 @@ def skip_none(x):
     return [i for i in x if i is not None]
 
 
+class Space(Parser):
+    def process(self, pos, data, ctx):
+        if data[pos].isspace():
+            return pos + 1, data[pos]
+        ctx.set(pos, "Expected whitespace character.")
+        raise Exception()
+
+
 EOF = EOF() % "EOF"
 EOL = InSet("\n\r") % "EOL"
 LineEnd = Wrapper(EOL | EOF) % "LineEnd"
@@ -1196,8 +1234,9 @@ Digit = InSet(string.digits) % "digit"
 Digits = String(string.digits) % "digits"
 Letter = InSet(string.ascii_letters) % "ASCII letter"
 Letters = String(string.ascii_letters) % "ASCII letters"
+Space = Space() % "any whitespace"
 WSChar = InSet(set(string.whitespace) - set("\n\r")) % "whitespace w/o EOL"
-WS = Many(InSet(string.whitespace) % "any whitespace")
+WS = Many(Space)
 Number = (Lift(_make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)) % "number"
 SingleQuotedString = Char("'") >> String(set(string.printable) - set("'"), "'") << Char("'")
 DoubleQuotedString = Char('"') >> String(set(string.printable) - set('"'), '"') << Char('"')

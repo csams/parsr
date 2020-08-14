@@ -69,6 +69,25 @@ val = vowels("oouieaaea")    # returns "oouieaaea"
 val = vowels("ga")           # raises an exception
 ```
 
+### StringUntil
+Matches any number of characters until a predicate is seen. You may set
+lower and upper bounds. Both are inclusive. The characters that match
+the predicate are not consumed.
+```
+su  = StringUntil(Char("="))  # parses any number of characters until '='
+val = su("ab=")               # produces "ab" from the data.
+val = su("ab")                # raises an exception
+
+su  = StringUntil(Char("="), lower=2)  # parses at least two characters until '='
+val = su("ab=")                        # produces "ab" from the data.
+val = su("a=")                         # raises an exception
+
+su  = StringUntil(Char("="), upper=2)  # parses at most two characters until '='
+val = su("ab=")                        # produces "ab" from the data.
+val = su("a=")                         # produces "a"
+val = su("abc=")                       # raises an exception
+
+```
 ### Literal
 Match a literal string. The `value` keyword lets you return a python value
 instead of the matched input. The `ignore_case` keyword makes the match case
