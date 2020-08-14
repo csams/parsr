@@ -326,6 +326,7 @@ class Parser(with_metaclass(_ParserMeta, Node)):
         msg = "At line {} column {}:"
         print(msg.format(lineno, colno, ctx.lines), file=err)
         for parsers, msg in ctx.errors:
+            print(len(parsers))
             names = " -> ".join([p.name for p in parsers if p.name])
             v = data[ctx.pos] or "EOF"
             print(names, file=err)
@@ -700,10 +701,11 @@ class Many(Parser):
             bs = Many(Char("b"), lower=1) # requires at least one "b"
 
     """
-    def __init__(self, parser, lower=0):
+    def __init__(self, parser, lower=0, upper=None):
         super(Many, self).__init__()
         self.add_child(parser)
         self.lower = lower
+        self.upper = upper
 
     def process(self, pos, data, ctx):
         orig = pos
@@ -718,6 +720,11 @@ class Many(Parser):
         if len(results) < self.lower:
             child = self.children[0]
             msg = "Expected at least {} of {}.".format(self.lower, child)
+            ctx.set(orig, msg)
+            raise Exception()
+
+        if self.upper is not None and len(results) > self.upper:
+            msg = "Expected at most {} of {}.".format(self.upper, child)
             ctx.set(orig, msg)
             raise Exception()
 

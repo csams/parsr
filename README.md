@@ -222,6 +222,10 @@ val = ab("ababab")# produces [["a", "b"], ["a", "b"], ["a", "b"]]
 
 ab = Many(a | b, lower=1) # parses any combination of "a" and "b" like "aababbaba..."
 val = ab("aababb")# produces ["a", "a", "b", "a", "b", "b"]
+
+ab = Many(a | b, upper=2) # parses any combination of "a" and "b" like "aababbaba..."
+val = ab("ab")    # produces ["a", "b"]
+val = ab("aab")   # raises an exception
 ```
 
 ### Until
