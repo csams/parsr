@@ -86,8 +86,8 @@ su  = StringUntil(Char("="), upper=2)  # parses at most two characters until '='
 val = su("ab=")                        # produces "ab" from the data.
 val = su("a=")                         # produces "a"
 val = su("abc=")                       # raises an exception
-
 ```
+
 ### Literal
 Match a literal string. The `value` keyword lets you return a python value
 instead of the matched input. The `ignore_case` keyword makes the match case
