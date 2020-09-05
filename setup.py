@@ -16,7 +16,7 @@ runtime = set([
 if __name__ == "__main__":
     setup(
         name="parsr",
-        version="0.3.4",
+        version="0.3.5",
         description="Parsr is a simple parser combinator library in pure python.",
         long_description=open("README.md").read(),
         long_description_content_type='text/markdown',

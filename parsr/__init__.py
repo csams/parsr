@@ -561,10 +561,12 @@ class Mark(object):
     in the input. Marks can give more context to a value transformed by mapped
     functions.
     """
-    def __init__(self, lineno, col, value):
+    def __init__(self, lineno, col, value, start, end):
         self.lineno = lineno
         self.col = col
         self.value = value
+        self.start = start
+        self.end = end
 
 
 class PosMarker(Wrapper):
@@ -576,8 +578,8 @@ class PosMarker(Wrapper):
     def process(self, pos, data, ctx):
         lineno = ctx.line(pos) + 1
         col = ctx.col(pos) + 1
-        pos, result = super(PosMarker, self).process(pos, data, ctx)
-        return pos, Mark(lineno, col, result)
+        newpos, result = super(PosMarker, self).process(pos, data, ctx)
+        return newpos, Mark(lineno, col, result, pos, newpos)
 
 
 class Sequence(Parser):
