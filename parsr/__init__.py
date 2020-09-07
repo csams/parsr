@@ -1236,11 +1236,6 @@ class EndTagName(Wrapper):
         return pos, res
 
 
-def _make_number(sign, int_part, frac_part):
-    tmp = sign + int_part + ("".join(frac_part) if frac_part else "")
-    return float(tmp) if "." in tmp else int(tmp)
-
-
 def skip_none(x):
     return [i for i in x if i is not None]
 
@@ -1278,7 +1273,7 @@ Letters = String(string.ascii_letters) % "ASCII letters"
 Space = Space() % "any whitespace"
 WSChar = InSet(set(string.whitespace) - set("\n\r")) % "whitespace w/o EOL"
 WS = Many(Space)
-Number = (Lift(_make_number) * Opt(Char("-"), "") * Digits * Opt(Char(".") + Digits)) % "number"
+Number = Regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?").map(float) % "Number"
 SingleQuotedString = Char("'") >> String(set(string.printable) - set("'"), "'") << Char("'")
 DoubleQuotedString = Char('"') >> String(set(string.printable) - set('"'), '"') << Char('"')
 QuotedString = Wrapper(DoubleQuotedString | SingleQuotedString) % "quoted string"
