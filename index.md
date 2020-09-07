@@ -91,6 +91,14 @@ val = su("a=")                         # produces "a"
 val = su("abc=")                       # raises an exception
 ```
 
+### Regex
+Match characters against a regular expression.
+```python
+identifier = Regex("[a-zA-Z]([a-zA-Z0-9])*")
+identifier("abcd1") # returns "abcd1"
+identifier("1bcd1") # raises an exception
+```
+
 ### Literal
 Match a literal string. The `value` keyword lets you return a python value
 instead of the matched input. The `ignore_case` keyword makes the match case
