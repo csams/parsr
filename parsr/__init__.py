@@ -49,6 +49,7 @@ Here's an example that evaluates arithmetic expressions.
 from __future__ import print_function
 import functools
 import logging
+import re
 import string
 from bisect import bisect_left
 from six import StringIO, with_metaclass
@@ -145,11 +146,12 @@ class Context(object):
     for grammars like xml or apache configuration, the active parser stack for
     error reporting, and accumulated errors for the farthest position reached.
     """
-    def __init__(self, lines, src=None):
+    def __init__(self, lines, orig, src=None):
         self.pos = -1
         self.indents = []
         self.tags = []
         self.src = src
+        self.orig = orig
         self.lines = [i for i, x in enumerate(lines) if x == "\n"]
         self.parser_stack = []
         self.errors = []
@@ -311,12 +313,12 @@ class Parser(with_metaclass(_ParserMeta, Node)):
         parsers have particular needs not covered by the default
         implementation that provides significant indent and tag stacks.
         """
-        data = list(data)
-        data.append(None)  # add a terminal so we don't overrun
-        ctx = Ctx(data, src=src)
+        chars = list(data)
+        chars.append(None)  # add a terminal so we don't overrun
+        ctx = Ctx(chars, data, src=src)
 
         try:
-            _, ret = self.process(0, data, ctx)
+            _, ret = self.process(0, chars, ctx)
             return ret
         except Exception:
             pass
@@ -474,6 +476,35 @@ class StringUntil(Parser):
             ctx.set(pos, "Expected at least {0} characters.".format(self.lower))
             raise Exception()
         return newpos, res
+
+
+class Regex(Parser):
+    """
+    Match characters against a regular expression.
+
+        .. code-block:: python
+
+            identifier = Regex("[a-zA-Z]([a-zA-Z0-9])*")
+            identifier("abcd1") # returns "abcd1"
+            identifier("1bcd1") # raises an exception
+
+    """
+    def __init__(self, pattern, flags=0, return_match=False):
+        super(Regex, self).__init__()
+        self.pattern = pattern
+        self.flags = flags
+        self.regex = re.compile(pattern, flags)
+        self.return_match = return_match
+
+    def process(self, pos, data, ctx):
+        try:
+            m = self.regex.match(ctx.orig[pos:])
+            start, end = m.span()
+            res = m if self.return_match else ctx.orig[pos:pos + end]
+            return pos + end, res
+        except:
+            ctx.set(pos, "Expected pattern {0!r} (flags={1}).".format(self.pattern, self.flags))
+            raise Exception()
 
 
 class Literal(Parser):

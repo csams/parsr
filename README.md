@@ -76,7 +76,7 @@ val = vowels("ga")           # raises an exception
 Matches any number of characters until a predicate is seen. You may set
 lower and upper bounds. Both are inclusive. The characters that match
 the predicate are not consumed.
-```
+```python
 su  = StringUntil(Char("="))  # parses any number of characters until '='
 val = su("ab=")               # produces "ab" from the data.
 val = su("ab")                # raises an exception
@@ -89,6 +89,14 @@ su  = StringUntil(Char("="), upper=2)  # parses at most two characters until '='
 val = su("ab=")                        # produces "ab" from the data.
 val = su("a=")                         # produces "a"
 val = su("abc=")                       # raises an exception
+```
+
+### Regex
+Match characters against a regular expression.
+```python
+identifier = Regex("[a-zA-Z]([a-zA-Z0-9])*")
+identifier("abcd1") # returns "abcd1"
+identifier("1bcd1") # raises an exception
 ```
 
 ### Literal
