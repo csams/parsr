@@ -1,4 +1,5 @@
 [![Documentation Status](https://readthedocs.org/projects/parsr/badge/?version=latest)](https://parsr.readthedocs.io/en/latest/?badge=latest)
+[![Test Status](https://travis-ci.org/csams/parsr.svg?branch=master)](https://travis-ci.org/csams/parsr.svg?branch=master)
 
 # parsr
 parsr is a little library for parsing simple, mostly context free grammars that
