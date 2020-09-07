@@ -76,7 +76,7 @@ val = vowels("ga")           # raises an exception
 Matches any number of characters until a predicate is seen. You may set
 lower and upper bounds. Both are inclusive. The characters that match
 the predicate are not consumed.
-```
+```python
 su  = StringUntil(Char("="))  # parses any number of characters until '='
 val = su("ab=")               # produces "ab" from the data.
 val = su("ab")                # raises an exception
