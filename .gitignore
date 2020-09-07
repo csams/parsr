@@ -33,3 +33,4 @@ pip-selfcheck.json
 *.gz
 pyvenv.cfg
 .venvs
+_build

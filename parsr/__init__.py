@@ -1,4 +1,6 @@
 """
+parsr
+=====
 parsr is a library for building parsers based on `parsing expression grammars or
 PEGs <http://bford.info/pub/lang/peg.pdf>`_.
 
