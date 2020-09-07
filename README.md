@@ -1,3 +1,5 @@
+[![Documentation Status](https://readthedocs.org/projects/parsr/badge/?version=latest)](https://parsr.readthedocs.io/en/latest/?badge=latest)
+
 # parsr
 parsr is a little library for parsing simple, mostly context free grammars that
 might require knowledge of indentation or matching tags.
