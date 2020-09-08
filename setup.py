@@ -29,24 +29,25 @@ if __name__ == "__main__":
         version="0.4.1",
         description="Parsr is a simple parser combinator library in pure python.",
         long_description=open("README.md").read(),
-        long_description_content_type='text/markdown',
+        long_description_content_type="text/markdown",
         url="https://parsr.readthedocs.io/en/latest/parsr.html",
         packages=find_packages(),
-        package_data={'': ['LICENSE']},
-        license='Apache 2.0',
+        package_data={"": ["LICENSE"]},
+        license="Apache 2.0",
         install_requires=list(runtime),
         extras_require={
-            'develop': list(develop | docs | testing),
-            'docs': list(runtime | docs),
+            "develop": list(develop | docs | testing),
+            "docs": list(runtime | docs),
+            "testing": list(runtime | testing),
         },
         classifiers=[
-            'Intended Audience :: Developers',
-            'Natural Language :: English',
-            'License :: OSI Approved :: Apache Software License',
-            'Programming Language :: Python',
-            'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3.6',
-            'Programming Language :: Python :: 3.7'
+            "Intended Audience :: Developers",
+            "Natural Language :: English",
+            "License :: OSI Approved :: Apache Software License",
+            "Programming Language :: Python",
+            "Programming Language :: Python :: 2.7",
+            "Programming Language :: Python :: 3.6",
+            "Programming Language :: Python :: 3.7"
         ],
         include_package_data=True
     )
