@@ -1,25 +1,25 @@
 from setuptools import setup, find_packages
 
 develop = set([
-    'ipython',
-    'setuptools',
-    'twine',
-    'wheel',
+    "ipython==7.17.0",
+    "setuptools==50.3.0",
+    "twine==3.2.0",
+    "wheel==0.35.1",
 ])
 
 runtime = set([
-    "six",
+    "six==1.15.0",
 ])
 
 docs = set([
-    'sphinx',
-    'sphinx_rtd_theme',
+    "sphinx==3.2.1",
+    "sphinx_rtd_theme==0.5.0",
 ])
 
 testing = set([
-    'coverage',
-    'pytest',
-    'pytest-cov',
+    "coverage==5.2.1",
+    "pytest==6.0.1",
+    "pytest-cov==2.10.1",
 ])
 
 
