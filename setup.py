@@ -2,9 +2,6 @@ from setuptools import setup, find_packages
 
 develop = set([
     'ipython',
-    'pytest',
-    'pytest-cov',
-    'coverage',
     'setuptools',
     'twine',
     'wheel',
@@ -12,6 +9,17 @@ develop = set([
 
 runtime = set([
     "six",
+])
+
+docs = set([
+    'sphinx',
+    'sphinx_rtd_theme',
+])
+
+testing = set([
+    'coverage',
+    'pytest',
+    'pytest-cov',
 ])
 
 
@@ -28,7 +36,8 @@ if __name__ == "__main__":
         license='Apache 2.0',
         install_requires=list(runtime),
         extras_require={
-            'develop': list(develop),
+            'develop': list(develop | docs | testing),
+            'docs': list(runtime | docs),
         },
         classifiers=[
             'Intended Audience :: Developers',
