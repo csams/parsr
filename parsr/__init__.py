@@ -758,6 +758,7 @@ class Many(Parser):
             raise Exception()
 
         if self.upper is not None and len(results) > self.upper:
+            child = self.children[0]
             msg = "Expected at most {0} of {1}.".format(self.upper, child)
             ctx.set(orig, msg)
             raise Exception()
@@ -766,7 +767,7 @@ class Many(Parser):
 
     def __repr__(self):
         if not self.name:
-            return "Many({0}, lower={1})".format(self.children[0], self.lower)
+            return "Many({0}, lower={1}, upper={2})".format(self.children[0], self.lower, self.upper)
         return super(Many, self).__repr__()
 
 
@@ -812,7 +813,7 @@ class Until(Parser):
                 except Exception:
                     break
                 if bound is not None and len(results) > bound:
-                    msg = "{0} matched more than {1}.".format(self.parser, bound)
+                    msg = "{0} matched more than {1}.".format(parser, bound)
                     ctx.set(pos, msg)
                     raise Exception()
             else:

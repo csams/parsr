@@ -3,6 +3,8 @@ from setuptools import setup, find_packages
 develop = set([
     'ipython',
     'pytest',
+    'pytest-cov',
+    'coverage',
     'setuptools',
     'twine',
     'wheel',
@@ -20,7 +22,7 @@ if __name__ == "__main__":
         description="Parsr is a simple parser combinator library in pure python.",
         long_description=open("README.md").read(),
         long_description_content_type='text/markdown',
-        url="https://github.com/csams/parsr",
+        url="https://parsr.readthedocs.io/en/latest/parsr.html",
         packages=find_packages(),
         package_data={'': ['LICENSE']},
         license='Apache 2.0',
